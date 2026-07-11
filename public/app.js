@@ -13,12 +13,15 @@ let state = null;
 let selectedIds = new Set();
 let toastTimer = null;
 let attemptedReconnect = false;
+let directory = { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
+let presenceTimer = null;
 
 const $ = id => document.getElementById(id);
 const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
 
 function showScreen(id) {
   screens.forEach(screenId => $(screenId).classList.toggle("hidden", screenId !== id));
+  $("globalHomeBtn").classList.toggle("hidden", id === "homeScreen");
 }
 
 function cleanName(value) {
@@ -27,6 +30,45 @@ function cleanName(value) {
 
 function cleanCode(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function savedName() {
+  return cleanName(localStorage.getItem("pokerChinesName") || getSession()?.name || "");
+}
+
+function setSavedName(name) {
+  const cleaned = cleanName(name);
+  if (cleaned) localStorage.setItem("pokerChinesName", cleaned);
+  else localStorage.removeItem("pokerChinesName");
+}
+
+function syncNameInputs(name, sourceId = null) {
+  const cleaned = cleanName(name);
+  if (sourceId !== "createName") $("createName").value = cleaned;
+  if (sourceId !== "joinName") $("joinName").value = cleaned;
+  setSavedName(cleaned);
+  return cleaned;
+}
+
+function announcePresence(name = savedName()) {
+  const cleaned = cleanName(name);
+  if (!socket.connected) return;
+  socket.emit("set_presence", { name: cleaned }, () => {});
+}
+
+function schedulePresence(name, sourceId) {
+  const cleaned = syncNameInputs(name, sourceId);
+  clearTimeout(presenceTimer);
+  presenceTimer = setTimeout(() => announcePresence(cleaned), 350);
 }
 
 function setSession(data) {
@@ -81,8 +123,9 @@ async function copyInvite() {
 }
 
 function createRoom() {
-  const name = cleanName($("createName").value);
-  socket.emit("create_room", { name }, result => {
+  const name = syncNameInputs($("createName").value, "createName");
+  const isPublic = $("publicRoomCheck").checked;
+  socket.emit("create_room", { name, isPublic }, result => {
     callbackResult(result, data => {
       setSession({ code: data.code, token: data.token, playerId: data.playerId, name });
       history.replaceState({}, "", `?room=${data.code}`);
@@ -91,9 +134,17 @@ function createRoom() {
   });
 }
 
-function joinRoom() {
-  const name = cleanName($("joinName").value);
-  const code = cleanCode($("roomCodeInput").value);
+function joinRoom(codeOverride = null) {
+  const name = syncNameInputs($("joinName").value || $("createName").value, "joinName");
+  const code = cleanCode(codeOverride || $("roomCodeInput").value);
+
+  if (name.length < 2) {
+    toast("Digite seu nome antes de entrar.", "warning");
+    $("joinName").focus();
+    return;
+  }
+
+  $("roomCodeInput").value = code;
   socket.emit("join_room", { name, code }, result => {
     callbackResult(result, data => {
       setSession({ code: data.code, token: data.token, playerId: data.playerId, name });
@@ -127,9 +178,35 @@ function leaveRoom() {
     clearSession();
     state = null;
     selectedIds.clear();
+    $("winnerModal").classList.add("hidden");
     history.replaceState({}, "", location.pathname);
     showScreen("homeScreen");
+    announcePresence();
+    renderDirectory();
+    toast("Você voltou ao início.", "success");
   });
+}
+
+function confirmAndLeaveRoom() {
+  const activeMatch = state?.status === "playing";
+  const message = activeMatch
+    ? "Tem certeza que deseja voltar ao início? A partida atual será encerrada para todos os jogadores."
+    : "Tem certeza que deseja voltar ao início e sair desta sala?";
+
+  if (window.confirm(message)) {
+    leaveRoom();
+  }
+}
+
+function goHome() {
+  if (state) {
+    confirmAndLeaveRoom();
+    return;
+  }
+  $("winnerModal").classList.add("hidden");
+  history.replaceState({}, "", location.pathname);
+  showScreen("homeScreen");
+  announcePresence();
 }
 
 function startGame() {
@@ -153,6 +230,54 @@ function passTurn() {
   socket.emit("pass_turn", {}, result => {
     if (!result?.ok) toast(result?.error || "Não foi possível passar.", "error");
   });
+}
+
+function statusText(player) {
+  if (player.status === "available") return "Disponível";
+  if (player.status === "lobby") return player.roomCode ? `Em sala pública ${player.roomCode}` : "Em uma sala";
+  if (player.status === "playing") return "Jogando agora";
+  if (player.status === "finished") return "Partida encerrada";
+  return "Online";
+}
+
+function renderDirectory() {
+  if (!$("onlinePlayers") || !$("openRooms")) return;
+
+  $("onlineCount").textContent = `${directory.onlineCount || 0} online`;
+  $("onlineHelper").textContent = `${directory.availableCount || 0} jogador(es) disponível(is) para uma nova sala.`;
+  $("openRoomCount").textContent = `${directory.openRooms?.length || 0} sala${directory.openRooms?.length === 1 ? "" : "s"}`;
+
+  const players = Array.isArray(directory.players) ? directory.players : [];
+  if (players.length === 0) {
+    $("onlinePlayers").innerHTML = '<div class="empty-state">Nenhum jogador identificado neste momento.</div>';
+  } else {
+    $("onlinePlayers").innerHTML = players.map(player => {
+      const isMe = player.id === socket.id;
+      const available = player.status === "available";
+      return `<div class="online-item">
+        <span class="avatar small">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>
+        <span class="online-main">
+          <b>${escapeHtml(player.name)}${isMe ? " (você)" : ""}</b>
+          <small>${escapeHtml(statusText(player))}</small>
+        </span>
+        <span class="status-chip ${available ? "available" : "busy"}">${available ? "Livre" : "Ocupado"}</span>
+      </div>`;
+    }).join("");
+  }
+
+  const rooms = Array.isArray(directory.openRooms) ? directory.openRooms : [];
+  if (rooms.length === 0) {
+    $("openRooms").innerHTML = '<div class="empty-state">Nenhuma sala pública aguardando jogadores.</div>';
+  } else {
+    $("openRooms").innerHTML = rooms.map(room => `<div class="online-item room-list-item">
+      <span class="room-code-mini">${escapeHtml(room.code)}</span>
+      <span class="online-main">
+        <b>Sala de ${escapeHtml(room.hostName)}</b>
+        <small>${room.playerCount}/4 jogadores • ${room.connectedCount} conectado(s)</small>
+      </span>
+      <button class="btn primary compact join-open-room" data-room-code="${escapeHtml(room.code)}">Entrar</button>
+    </div>`).join("");
+  }
 }
 
 function compareTuples(a, b) {
@@ -223,7 +348,7 @@ function playerSeatHtml(player, isMe = false) {
   const dot = player.connected ? "" : " off";
   const meLabel = isMe ? " (você)" : "";
   return {
-    html: `<div class="seat-name"><span class="online-dot${dot}"></span>${player.name}${meLabel}</div>
+    html: `<div class="seat-name"><span class="online-dot${dot}"></span>${escapeHtml(player.name)}${meLabel}</div>
       <div class="seat-meta">${player.cardCount} carta${player.cardCount === 1 ? "" : "s"}${player.isHost ? " • anfitrião" : ""}</div>
       ${isMe ? "" : miniDeck(player.cardCount)}`,
     active
@@ -236,8 +361,8 @@ function renderLobby() {
   $("playerCounter").textContent = `${state.players.length}/4`;
   $("lobbyPlayers").innerHTML = state.players.map(player => `
     <div class="lobby-player${player.connected ? "" : " offline"}">
-      <span class="avatar">${player.name.charAt(0).toUpperCase()}</span>
-      <span class="name">${player.name}</span>
+      <span class="avatar">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>
+      <span class="name">${escapeHtml(player.name)}</span>
       <span class="player-tag">${player.id === state.me.id ? "VOCÊ" : ""}${player.isHost ? " ANFITRIÃO" : ""}</span>
     </div>
   `).join("");
@@ -421,6 +546,7 @@ function closeRules() { $("rulesModal").classList.add("hidden"); }
 
 socket.on("connect", () => {
   $("connectionText").textContent = "Servidor conectado.";
+  announcePresence();
   if (getSession()) rejoin();
   else attemptedReconnect = true;
 });
@@ -438,10 +564,17 @@ socket.on("room_state", nextState => {
 
 socket.on("notice", message => toast(message.text, message.tone));
 
+socket.on("directory_state", nextDirectory => {
+  directory = nextDirectory || { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
+  renderDirectory();
+});
+
 $("createRoomBtn").addEventListener("click", createRoom);
-$("joinRoomBtn").addEventListener("click", joinRoom);
+$("joinRoomBtn").addEventListener("click", () => joinRoom());
 $("startGameBtn").addEventListener("click", startGame);
-$("leaveBtn").addEventListener("click", leaveRoom);
+$("leaveBtn").addEventListener("click", confirmAndLeaveRoom);
+$("gameLeaveBtn").addEventListener("click", confirmAndLeaveRoom);
+$("globalHomeBtn").addEventListener("click", goHome);
 $("copyRoomBtn").addEventListener("click", copyInvite);
 $("copyGameBtn").addEventListener("click", copyInvite);
 $("playBtn").addEventListener("click", playCards);
@@ -458,18 +591,16 @@ $("rematchBtn").addEventListener("click", () => {
   $("winnerModal").classList.add("hidden");
   startGame();
 });
-$("winnerLobbyBtn").addEventListener("click", () => {
-  clearSession();
-  state = null;
-  selectedIds.clear();
-  $("winnerModal").classList.add("hidden");
-  history.replaceState({}, "", location.pathname);
-  location.reload();
-});
+$("winnerLobbyBtn").addEventListener("click", goHome);
 
 $("roomCodeInput").addEventListener("input", event => {
   event.target.value = cleanCode(event.target.value);
 });
+
+["createName", "joinName"].forEach(inputId => {
+  $(inputId).addEventListener("input", event => schedulePresence(event.target.value, inputId));
+});
+
 $("createName").addEventListener("keydown", event => {
   if (event.key === "Enter") createRoom();
 });
@@ -477,10 +608,14 @@ $("roomCodeInput").addEventListener("keydown", event => {
   if (event.key === "Enter") joinRoom();
 });
 
+$("openRooms").addEventListener("click", event => {
+  const button = event.target.closest(".join-open-room");
+  if (!button) return;
+  joinRoom(button.dataset.roomCode);
+});
+
 const codeFromUrl = cleanCode(new URLSearchParams(location.search).get("room"));
 if (codeFromUrl) $("roomCodeInput").value = codeFromUrl;
-const prior = getSession();
-if (prior?.name) {
-  $("createName").value = prior.name;
-  $("joinName").value = prior.name;
-}
+const initialName = savedName();
+if (initialName) syncNameInputs(initialName);
+renderDirectory();

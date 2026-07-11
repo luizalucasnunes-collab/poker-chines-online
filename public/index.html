@@ -9,6 +9,7 @@
 </head>
 <body>
   <div id="toast" class="toast"></div>
+  <button id="globalHomeBtn" class="global-home hidden" aria-label="Voltar ao início">⌂ Início</button>
 
   <main>
     <section id="homeScreen" class="screen home-screen">
@@ -27,6 +28,10 @@
           <label>Seu nome
             <input id="createName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Pedro">
           </label>
+          <label class="check-label">
+            <input id="publicRoomCheck" type="checkbox" checked>
+            <span>Mostrar esta sala para jogadores online</span>
+          </label>
           <button id="createRoomBtn" class="btn primary full">Criar sala</button>
         </article>
 
@@ -42,6 +47,36 @@
         </article>
       </div>
 
+      <div class="discovery-grid">
+        <article class="panel directory-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">PRESENÇA AO VIVO</p>
+              <h2>Jogadores online</h2>
+            </div>
+            <span id="onlineCount" class="pill">0 online</span>
+          </div>
+          <p id="onlineHelper" class="helper directory-helper">Digite seu nome para aparecer como disponível.</p>
+          <div id="onlinePlayers" class="online-list">
+            <div class="empty-state">Nenhum jogador identificado neste momento.</div>
+          </div>
+        </article>
+
+        <article class="panel directory-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">PARTIDA RÁPIDA</p>
+              <h2>Salas abertas</h2>
+            </div>
+            <span id="openRoomCount" class="pill">0 salas</span>
+          </div>
+          <p class="helper directory-helper">Entre em uma sala pública sem precisar digitar o código.</p>
+          <div id="openRooms" class="online-list">
+            <div class="empty-state">Nenhuma sala pública aguardando jogadores.</div>
+          </div>
+        </article>
+      </div>
+
       <button id="homeRulesBtn" class="link-button">Ver regras do jogo</button>
       <p class="connection" id="connectionText">Conectando ao servidor...</p>
     </section>
@@ -54,7 +89,7 @@
         </div>
         <div class="top-actions">
           <button id="lobbyRulesBtn" class="btn ghost">Regras</button>
-          <button id="leaveBtn" class="btn danger">Sair</button>
+          <button id="leaveBtn" class="btn danger">Sair da sala</button>
         </div>
       </header>
 
@@ -87,6 +122,7 @@
         <div class="game-actions">
           <button id="gameRulesBtn" class="btn ghost">Regras</button>
           <button id="copyGameBtn" class="btn ghost">Convidar</button>
+          <button id="gameLeaveBtn" class="btn danger">Sair da sala</button>
         </div>
       </header>
 
@@ -149,7 +185,7 @@
       <h2 id="winnerTitle">Fim de jogo</h2>
       <p id="winnerText"></p>
       <button id="rematchBtn" class="btn primary hidden">Jogar novamente</button>
-      <button id="winnerLobbyBtn" class="btn ghost">Voltar à entrada</button>
+      <button id="winnerLobbyBtn" class="btn ghost">⌂ Voltar ao início</button>
     </div>
   </div>
 

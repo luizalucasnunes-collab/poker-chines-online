@@ -22,6 +22,7 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
 const rooms = new Map();
+const onlineUsers = new Map();
 
 function normalizeName(value) {
   return String(value || "")
@@ -33,6 +34,76 @@ function normalizeName(value) {
 
 function normalizeRoomCode(value) {
   return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
+
+function updatePresence(socket, name = null) {
+  const existing = onlineUsers.get(socket.id);
+  const normalizedName = name === null ? existing?.name : normalizeName(name);
+
+  if (!normalizedName || normalizedName.length < 2) {
+    onlineUsers.delete(socket.id);
+    return;
+  }
+
+  const room = rooms.get(socket.data.roomCode);
+  let status = "available";
+  let roomCode = null;
+  let publicRoom = false;
+
+  if (room) {
+    roomCode = room.code;
+    publicRoom = Boolean(room.isPublic);
+    if (room.status === "playing") status = "playing";
+    else if (room.status === "finished") status = "finished";
+    else status = "lobby";
+  }
+
+  onlineUsers.set(socket.id, {
+    id: socket.id,
+    name: normalizedName,
+    status,
+    roomCode,
+    publicRoom,
+    updatedAt: Date.now()
+  });
+}
+
+function directoryState() {
+  const players = [...onlineUsers.values()]
+    .map(user => ({
+      id: user.id,
+      name: user.name,
+      status: user.status,
+      roomCode: user.status === "lobby" && user.publicRoom ? user.roomCode : null
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+  const openRooms = [...rooms.values()]
+    .filter(room =>
+      room.isPublic &&
+      room.status === "lobby" &&
+      room.players.length > 0 &&
+      room.players.length < 4 &&
+      room.players.some(player => player.connected)
+    )
+    .map(room => ({
+      code: room.code,
+      hostName: roomPlayer(room, room.hostId)?.name || "Jogador",
+      playerCount: room.players.length,
+      connectedCount: room.players.filter(player => player.connected).length
+    }))
+    .sort((a, b) => b.playerCount - a.playerCount || a.code.localeCompare(b.code));
+
+  return {
+    onlineCount: players.length,
+    availableCount: players.filter(player => player.status === "available").length,
+    players,
+    openRooms
+  };
+}
+
+function broadcastDirectory() {
+  io.emit("directory_state", directoryState());
 }
 
 function createRoomCode() {
@@ -232,6 +303,7 @@ function stateFor(room, viewer) {
   return {
     code: room.code,
     status: room.status,
+    isPublic: Boolean(room.isPublic),
     paused: isPaused(room),
     players: room.players.map(player => ({
       id: player.id,
@@ -260,9 +332,12 @@ function emitRoom(room) {
   room.updatedAt = Date.now();
   for (const player of room.players) {
     if (player.connected && player.socketId) {
+      const playerSocket = io.sockets.sockets.get(player.socketId);
+      if (playerSocket) updatePresence(playerSocket, player.name);
       io.to(player.socketId).emit("room_state", stateFor(room, player));
     }
   }
+  broadcastDirectory();
 }
 
 function emitNotice(room, text, tone = "info") {
@@ -311,7 +386,41 @@ function startMatch(room) {
   room.startedAt = Date.now();
 }
 
+
+function resetRoomToLobby(room) {
+  room.status = "lobby";
+  room.currentPlayerId = null;
+  room.lastPlay = null;
+  room.lastPlayerId = null;
+  room.passCount = 0;
+  room.firstMove = true;
+  room.winnerId = null;
+  room.players.forEach(player => {
+    player.hand = [];
+  });
+}
+
 io.on("connection", socket => {
+  socket.emit("directory_state", directoryState());
+
+  socket.on("set_presence", (payload, callback = () => {}) => {
+    try {
+      const name = normalizeName(payload?.name);
+      if (name.length < 2) {
+        onlineUsers.delete(socket.id);
+        broadcastDirectory();
+        callback({ ok: true, listed: false });
+        return;
+      }
+
+      updatePresence(socket, name);
+      broadcastDirectory();
+      callback({ ok: true, listed: true });
+    } catch (error) {
+      callback({ ok: false, error: error.message || "Não foi possível atualizar sua presença." });
+    }
+  });
+
   socket.on("create_room", (payload, callback = () => {}) => {
     try {
       const name = normalizeName(payload?.name);
@@ -322,6 +431,7 @@ io.on("connection", socket => {
       const room = {
         code,
         status: "lobby",
+        isPublic: payload?.isPublic !== false,
         players: [player],
         hostId: player.id,
         currentPlayerId: null,
@@ -336,6 +446,7 @@ io.on("connection", socket => {
 
       rooms.set(code, room);
       attachSocket(socket, room, player);
+      updatePresence(socket, name);
       callback({ ok: true, code, playerId: player.id, token: player.token });
       emitRoom(room);
     } catch (error) {
@@ -360,6 +471,7 @@ io.on("connection", socket => {
       const player = makePlayer(name, socket);
       room.players.push(player);
       attachSocket(socket, room, player);
+      updatePresence(socket, name);
       callback({ ok: true, code, playerId: player.id, token: player.token });
       emitNotice(room, `${player.name} entrou na sala.`, "success");
       emitRoom(room);
@@ -379,6 +491,7 @@ io.on("connection", socket => {
       if (!player) throw new Error("Não foi possível recuperar seu lugar nesta sala.");
 
       attachSocket(socket, room, player);
+      updatePresence(socket, player.name);
       callback({ ok: true, code, playerId: player.id, token: player.token });
       emitNotice(room, `${player.name} reconectou.`, "success");
       emitRoom(room);
@@ -503,35 +616,55 @@ io.on("connection", socket => {
     const player = room && roomPlayer(room, socket.data.playerId);
 
     if (!room || !player) {
+      updatePresence(socket);
+      broadcastDirectory();
       callback({ ok: true });
       return;
     }
 
-    if (room.status === "playing") {
-      callback({ ok: false, error: "Durante uma partida, use a reconexão para voltar ao jogo." });
-      return;
-    }
+    const partidaEmAndamento = room.status === "playing";
+    const partidaEncerrada = room.status === "finished";
 
     room.players = room.players.filter(item => item.id !== player.id);
     socket.leave(room.code);
     socket.data.roomCode = null;
     socket.data.playerId = null;
+    updatePresence(socket, player.name);
 
     if (room.players.length === 0) {
       rooms.delete(room.code);
-    } else {
-      if (room.hostId === player.id) room.hostId = room.players[0].id;
-      emitNotice(room, `${player.name} saiu da sala.`, "info");
-      emitRoom(room);
+      broadcastDirectory();
+      callback({ ok: true });
+      return;
     }
 
+    if (room.hostId === player.id) {
+      room.hostId = room.players[0].id;
+    }
+
+    if (partidaEmAndamento || partidaEncerrada) {
+      resetRoomToLobby(room);
+      const motivo = partidaEmAndamento
+        ? `${player.name} saiu da sala. A partida foi encerrada e a sala voltou para a espera.`
+        : `${player.name} saiu da sala. A sala voltou para a espera.`;
+      emitNotice(room, motivo, "warning");
+    } else {
+      emitNotice(room, `${player.name} saiu da sala.`, "info");
+    }
+
+    emitRoom(room);
     callback({ ok: true });
   });
 
   socket.on("disconnect", () => {
+    onlineUsers.delete(socket.id);
+
     const room = rooms.get(socket.data.roomCode);
     const player = room && roomPlayer(room, socket.data.playerId);
-    if (!room || !player || player.socketId !== socket.id) return;
+    if (!room || !player || player.socketId !== socket.id) {
+      broadcastDirectory();
+      return;
+    }
 
     player.connected = false;
     player.socketId = null;
@@ -546,7 +679,10 @@ setInterval(() => {
   for (const [code, room] of rooms.entries()) {
     const allOffline = room.players.every(player => !player.connected);
     const idleLimit = allOffline ? 10 * 60 * 1000 : 6 * 60 * 60 * 1000;
-    if (now - room.updatedAt > idleLimit) rooms.delete(code);
+    if (now - room.updatedAt > idleLimit) {
+      rooms.delete(code);
+      broadcastDirectory();
+    }
   }
 }, 60 * 1000).unref();
 
