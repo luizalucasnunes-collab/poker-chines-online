@@ -1,56 +1,36 @@
-# Pôquer Chinês Online
+# Pôquer Chinês Online v2.1
 
-Jogo multiplayer online para **quatro pessoas**, com 13 cartas para cada jogador.
+Jogo multiplayer online para quatro jogadores, com salas públicas, bots e partidas por pontos.
 
-## Recursos
+## Regras de pontuação
 
-- Salas privadas com código de cinco caracteres.
-- Link de convite.
-- Quatro jogadores reais.
-- Servidor controla e valida as cartas.
-- Reconexão após atualizar a página ou perder a internet.
-- Partida pausada enquanto alguém estiver desconectado.
-- Revanche com os mesmos jogadores.
-- Interface para computador e celular.
-- Regra inicial obrigatória com o 3 de Ouros.
+- Cada rodada começa com 13 cartas por jogador.
+- Quando alguém bate, os outros três jogadores têm uma última oportunidade, em ordem, para jogar uma combinação superior ou passar.
+- A rodada só termina depois dessas três jogadas finais.
+- Cada jogador soma a quantidade de cartas que restou em sua mão.
+- A pontuação é conferida ao final de cada bloco de 4 rodadas.
+- Se alguém tiver 31 pontos ou mais, essa pessoa perde e a partida termina.
+- Se ninguém atingir 31, começa outro bloco de 4 rodadas, mantendo os pontos acumulados.
+- O objetivo é permanecer com a menor pontuação.
 
-## Rodar no computador para testar
+## Publicação
 
-Instale o Node.js 20 ou superior.
-
-No terminal, dentro da pasta do projeto:
+Build Command:
 
 ```bash
-npm install
-npm start
+corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
 ```
 
-Abra:
+Start Command:
 
-```text
-http://localhost:3000
+```bash
+node server.js
 ```
 
-Para simular quatro jogadores no mesmo computador, abra uma janela normal, uma janela anônima e outros navegadores/perfis.
 
-## Publicar no Render
+## Bots na versão 2.2
 
-1. Crie um repositório no GitHub.
-2. Coloque todos os arquivos deste projeto no repositório.
-3. No Render, escolha **New > Blueprint** e conecte o repositório.
-4. O arquivo `render.yaml` configurará o serviço.
-5. Após a publicação, o Render fornecerá um endereço público.
-6. Abra esse endereço, crie a sala e envie o convite aos outros jogadores.
-
-Também é possível criar um **Web Service** manualmente:
-
-- Build Command: `npm install`
-- Start Command: `npm start`
-- Health Check Path: `/health`
-
-## Observações
-
-- As salas ficam apenas na memória do servidor.
-- Se o serviço for reiniciado, as salas ativas são encerradas.
-- O projeto foi preparado para uma única instância de servidor.
-- Para escalar para várias instâncias, use um armazenamento compartilhado e um adaptador do Socket.IO, como Redis.
+- Na página inicial, use **Jogar agora contra 3 bots** para começar imediatamente.
+- Na sala de espera, o anfitrião pode usar **+1 Bot** ou **Completar com bots**.
+- Jogadores reais podem substituir bots em salas públicas enquanto a partida ainda não começou.
+- Os bots jogam e passam automaticamente quando chega a vez deles.

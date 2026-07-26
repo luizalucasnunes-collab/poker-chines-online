@@ -18,7 +18,7 @@
         <div>
           <p class="eyebrow">MULTIPLAYER ONLINE</p>
           <h1>Pôquer Chinês</h1>
-          <p class="subtitle">Crie uma sala, envie o código aos amigos e joguem com 13 cartas cada.</p>
+          <p class="subtitle">Jogue com amigos, entre em salas públicas ou complete a mesa com bots.</p>
         </div>
       </div>
 
@@ -28,11 +28,19 @@
           <label>Seu nome
             <input id="createName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Pedro">
           </label>
+          <label>Tipo de partida
+            <select id="gameModeSelect">
+              <option value="single">Partida única</option>
+              <option value="points">Partida por pontos (blocos de 4)</option>
+            </select>
+          </label>
           <label class="check-label">
             <input id="publicRoomCheck" type="checkbox" checked>
-            <span>Mostrar esta sala para jogadores online</span>
+            <span>Mostrar esta sala na lista pública</span>
           </label>
           <button id="createRoomBtn" class="btn primary full">Criar sala</button>
+          <button id="playBotsBtn" class="btn bot-quick full">🤖 Jogar agora contra 3 bots</button>
+          <p class="helper bot-helper">Cria uma sala privada, adiciona três bots e inicia imediatamente.</p>
         </article>
 
         <article class="panel">
@@ -50,30 +58,20 @@
       <div class="discovery-grid">
         <article class="panel directory-panel">
           <div class="panel-heading">
-            <div>
-              <p class="eyebrow">PRESENÇA AO VIVO</p>
-              <h2>Jogadores online</h2>
-            </div>
+            <div><p class="eyebrow">PRESENÇA AO VIVO</p><h2>Jogadores online</h2></div>
             <span id="onlineCount" class="pill">0 online</span>
           </div>
           <p id="onlineHelper" class="helper directory-helper">Digite seu nome para aparecer como disponível.</p>
-          <div id="onlinePlayers" class="online-list">
-            <div class="empty-state">Nenhum jogador identificado neste momento.</div>
-          </div>
+          <div id="onlinePlayers" class="online-list"><div class="empty-state">Nenhum jogador identificado.</div></div>
         </article>
 
         <article class="panel directory-panel">
           <div class="panel-heading">
-            <div>
-              <p class="eyebrow">PARTIDA RÁPIDA</p>
-              <h2>Salas abertas</h2>
-            </div>
+            <div><p class="eyebrow">PARTIDA RÁPIDA</p><h2>Salas abertas</h2></div>
             <span id="openRoomCount" class="pill">0 salas</span>
           </div>
-          <p class="helper directory-helper">Entre em uma sala pública sem precisar digitar o código.</p>
-          <div id="openRooms" class="online-list">
-            <div class="empty-state">Nenhuma sala pública aguardando jogadores.</div>
-          </div>
+          <p class="helper directory-helper">Escolha uma sala e clique em Entrar. Bots podem ser substituídos por jogadores.</p>
+          <div id="openRooms" class="online-list"><div class="empty-state">Nenhuma sala pública aguardando jogadores.</div></div>
         </article>
       </div>
 
@@ -83,10 +81,7 @@
 
     <section id="lobbyScreen" class="screen hidden">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">SALA DE ESPERA</p>
-          <h1>Pôquer Chinês</h1>
-        </div>
+        <div><p class="eyebrow">SALA DE ESPERA</p><h1>Pôquer Chinês</h1></div>
         <div class="top-actions">
           <button id="lobbyRulesBtn" class="btn ghost">Regras</button>
           <button id="leaveBtn" class="btn danger">Sair da sala</button>
@@ -97,17 +92,19 @@
         <article class="panel room-panel">
           <span>Código da sala</span>
           <strong id="roomCodeDisplay">-----</strong>
+          <div id="roomModeText" class="mode-badge">Partida única</div>
           <button id="copyRoomBtn" class="btn primary">Copiar convite</button>
-          <p>Envie o código ou o link para mais três jogadores.</p>
+          <p>Envie o código ou use bots para completar quatro jogadores.</p>
         </article>
 
         <article class="panel">
-          <div class="panel-heading">
-            <h2>Jogadores</h2>
-            <span id="playerCounter" class="pill">0/4</span>
-          </div>
+          <div class="panel-heading"><h2>Jogadores</h2><span id="playerCounter" class="pill">0/4</span></div>
           <div id="lobbyPlayers" class="lobby-players"></div>
-          <button id="startGameBtn" class="btn primary full hidden">Iniciar partida</button>
+          <div id="hostControls" class="host-controls hidden">
+            <button id="addBotBtn" class="btn ghost">+1 Bot</button>
+            <button id="fillBotsBtn" class="btn ghost">🤖 Completar com bots</button>
+            <button id="startGameBtn" class="btn primary">Iniciar partida</button>
+          </div>
           <p id="lobbyHint" class="helper">Aguardando os jogadores...</p>
         </article>
       </div>
@@ -118,6 +115,7 @@
         <div>
           <span class="room-badge">Sala <b id="gameRoomCode">-----</b></span>
           <h1>Pôquer Chinês</h1>
+          <div id="roundText" class="round-text"></div>
         </div>
         <div class="game-actions">
           <button id="gameRulesBtn" class="btn ghost">Regras</button>
@@ -126,9 +124,8 @@
         </div>
       </header>
 
-      <div id="pauseBanner" class="pause-banner hidden">
-        Partida pausada: aguardando um jogador reconectar.
-      </div>
+      <div id="scoreboard" class="scoreboard hidden"></div>
+      <div id="pauseBanner" class="pause-banner hidden">Partida pausada: aguardando um jogador reconectar.</div>
 
       <div class="game-table">
         <div id="seatNorth" class="seat north"></div>
@@ -137,14 +134,14 @@
 
         <div class="table-center">
           <div id="turnStatus" class="turn-status">Aguardando...</div>
-          <div class="played-area">
+          <div id="playSurface" class="played-area" role="button" tabindex="0" aria-label="Jogar cartas selecionadas">
             <span id="lastPlayLabel">Mesa livre</span>
             <div id="playedCards" class="played-cards"></div>
+            <small id="tableActionHint">Selecione as cartas e clique aqui para jogar</small>
           </div>
         </div>
 
         <div id="seatSouth" class="seat south"></div>
-
         <div class="hand-area">
           <div id="selectionText" class="selection-text">Selecione suas cartas</div>
           <div id="hand" class="hand"></div>
@@ -154,25 +151,25 @@
       <div class="action-dock">
         <button id="hintBtn" class="btn ghost">Dica</button>
         <button id="passBtn" class="btn danger">Passar</button>
-        <button id="playBtn" class="btn primary">Jogar seleção</button>
       </div>
     </section>
   </main>
 
   <div id="rulesModal" class="modal hidden">
     <div class="modal-card">
-      <div class="modal-heading">
-        <h2>Regras</h2>
-        <button id="closeRulesBtn" class="icon-button" aria-label="Fechar">×</button>
-      </div>
+      <div class="modal-heading"><h2>Regras</h2><button id="closeRulesBtn" class="icon-button" aria-label="Fechar">×</button></div>
       <div class="rules-grid">
-        <div><b>Objetivo</b><span>Seja o primeiro a ficar sem cartas.</span></div>
+        <div><b>Objetivo</b><span>Termine com a menor pontuação. No modo por pontos, quem atingir 31 pontos perde.</span></div>
         <div><b>Distribuição</b><span>Quatro jogadores recebem 13 cartas. Todo o baralho é usado.</span></div>
         <div><b>Cartas</b><span>3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A e 2.</span></div>
         <div><b>Naipes</b><span>♦ Ouros, ♥ Copas, ♠ Espadas e ♣ Paus.</span></div>
-        <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa, e a primeira combinação deve conter essa carta.</span></div>
+        <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa e deve usá-lo na primeira combinação.</span></div>
         <div><b>Jogadas</b><span>Carta, dupla, trinca ou uma combinação de cinco cartas.</span></div>
-        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Sequência do mesmo naipe.</span></div>
+        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe.</span></div>
+        <div><b>Jogar</b><span>Selecione as cartas e clique no centro da mesa.</span></div>
+        <div><b>Pontuação</b><span>Ao final de cada rodada, cada jogador soma 1 ponto por carta que permaneceu em sua mão.</span></div>
+        <div><b>Blocos de rodadas</b><span>Os pontos são conferidos a cada 4 rodadas. Se ninguém atingir 31, começa outro bloco de 4, mantendo o total acumulado.</span></div>
+        <div><b>Batida</b><span>Quando alguém joga suas últimas cartas, cada adversário ainda faz uma última jogada ou passa. A rodada termina somente depois que todos tiverem essa oportunidade.</span></div>
         <div><b>Rodada</b><span>Após três passes consecutivos, a mesa é liberada para quem fez a última jogada.</span></div>
       </div>
       <p class="rule-note">As sequências seguem a ordem contínua das cartas, de 3 até 2.</p>
@@ -184,7 +181,8 @@
       <div class="trophy">🏆</div>
       <h2 id="winnerTitle">Fim de jogo</h2>
       <p id="winnerText"></p>
-      <button id="rematchBtn" class="btn primary hidden">Jogar novamente</button>
+      <div id="roundResults" class="round-results"></div>
+      <button id="nextRoundBtn" class="btn primary hidden">Próxima rodada</button>
       <button id="winnerLobbyBtn" class="btn ghost">⌂ Voltar ao início</button>
     </div>
   </div>

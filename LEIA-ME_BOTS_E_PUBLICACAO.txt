@@ -1,0 +1,119 @@
+PÔQUER CHINÊS ONLINE — VERSÃO 2.2 COM BOTS
+===========================================
+
+ESTE ZIP CONTÉM O JOGO COMPLETO.
+Não é necessário combinar com versões anteriores.
+
+COMO USAR OS BOTS
+-----------------
+Opção 1 — Jogar sozinho:
+1. Na página inicial, digite seu nome.
+2. Escolha o tipo de partida.
+3. Clique em “Jogar agora contra 3 bots”.
+4. A sala será criada com três bots e a partida começará automaticamente.
+
+Opção 2 — Completar uma sala:
+1. Crie uma sala normalmente.
+2. Na sala de espera, clique em “Completar com bots”.
+3. Serão adicionados bots até completar quatro jogadores.
+4. Clique em “Iniciar partida”.
+
+Opção 3 — Adicionar um bot de cada vez:
+1. Na sala de espera, clique em “+1 Bot”.
+2. Repita até atingir quatro jogadores.
+3. Clique no X ao lado do bot para removê-lo.
+
+COMPORTAMENTO DOS BOTS
+----------------------
+- Jogam automaticamente quando chega a vez deles.
+- Escolhem uma combinação válida que supere a mesa.
+- Passam quando não possuem uma jogada válida.
+- Participam das últimas jogadas após uma batida.
+- Recebem pontos pelas cartas restantes.
+- Participam normalmente dos blocos de quatro rodadas.
+- Em uma sala pública, um jogador real pode ocupar o lugar de um bot antes
+  de a partida começar.
+
+ATUALIZAR O GITHUB
+------------------
+1. Extraia este arquivo ZIP.
+2. Abra o repositório poker-chines-online no GitHub.
+3. Clique em Add file.
+4. Clique em Upload files.
+5. Arraste TODO o conteúdo da pasta extraída:
+   - public
+   - server.js
+   - package.json
+   - package-lock.json
+   - render.yaml
+   - README.md
+   - .gitignore
+6. Não envie o próprio ZIP ao GitHub.
+7. Aguarde todos os arquivos carregarem.
+8. Em Commit message, escreva:
+   Adicionar partida contra bots
+9. Selecione “Commit directly to the main branch”.
+10. Clique em Commit changes.
+
+ESTRUTURA CORRETA NO GITHUB
+---------------------------
+public/
+  app.js
+  index.html
+  style.css
+
+server.js
+package.json
+package-lock.json
+render.yaml
+README.md
+.gitignore
+
+ATUALIZAR O RENDER
+------------------
+Normalmente, o Render inicia a publicação automaticamente depois do commit.
+
+1. Abra o serviço poker-chines-online no Render.
+2. Entre em Events ou Logs.
+3. Aguarde:
+   Build successful
+   Running 'node server.js'
+   Pôquer Chinês Online rodando na porta...
+   Your service is live
+
+Caso não comece automaticamente:
+1. Clique em Manual Deploy.
+2. Clique em Deploy latest commit.
+
+Se aparecer erro de cache:
+1. Clique em Manual Deploy.
+2. Clique em Clear build cache & deploy.
+
+CONFIGURAÇÕES DO RENDER
+-----------------------
+Build Command:
+corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+
+Start Command:
+node server.js
+
+Root Directory:
+deixe vazio
+
+Environment:
+NODE_VERSION = 24.17.0
+
+DEPOIS DA PUBLICAÇÃO
+--------------------
+1. Abra https://poker-chines-online.onrender.com
+2. Pressione Ctrl + F5.
+3. Digite seu nome.
+4. Clique em “Jogar agora contra 3 bots”.
+
+TESTE DO SERVIDOR
+-----------------
+Abra:
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true}

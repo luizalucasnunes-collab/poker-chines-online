@@ -12,7 +12,6 @@ const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"]
 let state = null;
 let selectedIds = new Set();
 let toastTimer = null;
-let attemptedReconnect = false;
 let directory = { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
 let presenceTimer = null;
 
@@ -41,6 +40,22 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function setSession(data) {
+  localStorage.setItem("pokerChinesSession", JSON.stringify(data));
+}
+
+function getSession() {
+  try {
+    return JSON.parse(localStorage.getItem("pokerChinesSession") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function clearSession() {
+  localStorage.removeItem("pokerChinesSession");
+}
+
 function savedName() {
   return cleanName(localStorage.getItem("pokerChinesName") || getSession()?.name || "");
 }
@@ -60,9 +75,8 @@ function syncNameInputs(name, sourceId = null) {
 }
 
 function announcePresence(name = savedName()) {
-  const cleaned = cleanName(name);
   if (!socket.connected) return;
-  socket.emit("set_presence", { name: cleaned }, () => {});
+  socket.emit("set_presence", { name: cleanName(name) }, () => {});
 }
 
 function schedulePresence(name, sourceId) {
@@ -71,30 +85,12 @@ function schedulePresence(name, sourceId) {
   presenceTimer = setTimeout(() => announcePresence(cleaned), 350);
 }
 
-function setSession(data) {
-  localStorage.setItem("pokerChinesSession", JSON.stringify(data));
-}
-
-function getSession() {
-  try {
-    return JSON.parse(localStorage.getItem("pokerChinesSession") || "null");
-  } catch {
-    return null;
-  }
-}
-
-function clearSession() {
-  localStorage.removeItem("pokerChinesSession");
-}
-
 function toast(text, tone = "info") {
   const element = $("toast");
   element.textContent = text;
   element.className = `toast show ${tone}`;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    element.className = "toast";
-  }, 2800);
+  toastTimer = setTimeout(() => { element.className = "toast"; }, 2800);
 }
 
 function callbackResult(result, onSuccess) {
@@ -124,8 +120,14 @@ async function copyInvite() {
 
 function createRoom() {
   const name = syncNameInputs($("createName").value, "createName");
+  if (name.length < 2) {
+    toast("Digite seu nome antes de criar a sala.", "warning");
+    $("createName").focus();
+    return;
+  }
+  const mode = $("gameModeSelect").value;
   const isPublic = $("publicRoomCheck").checked;
-  socket.emit("create_room", { name, isPublic }, result => {
+  socket.emit("create_room", { name, isPublic, mode }, result => {
     callbackResult(result, data => {
       setSession({ code: data.code, token: data.token, playerId: data.playerId, name });
       history.replaceState({}, "", `?room=${data.code}`);
@@ -134,16 +136,41 @@ function createRoom() {
   });
 }
 
+function playAgainstBots() {
+  const name = syncNameInputs($("createName").value, "createName");
+  if (name.length < 2) {
+    toast("Digite seu nome antes de jogar contra os bots.", "warning");
+    $("createName").focus();
+    return;
+  }
+  const mode = $("gameModeSelect").value;
+  socket.emit("create_room", {
+    name,
+    isPublic: false,
+    mode,
+    autoBots: 3,
+    autoStartBots: true
+  }, result => {
+    callbackResult(result, data => {
+      setSession({ code: data.code, token: data.token, playerId: data.playerId, name });
+      history.replaceState({}, "", `?room=${data.code}`);
+      toast("Partida contra três bots iniciada.", "success");
+    });
+  });
+}
+
 function joinRoom(codeOverride = null) {
   const name = syncNameInputs($("joinName").value || $("createName").value, "joinName");
   const code = cleanCode(codeOverride || $("roomCodeInput").value);
-
   if (name.length < 2) {
     toast("Digite seu nome antes de entrar.", "warning");
     $("joinName").focus();
     return;
   }
-
+  if (!code) {
+    toast("Informe o código da sala.", "warning");
+    return;
+  }
   $("roomCodeInput").value = code;
   socket.emit("join_room", { name, code }, result => {
     callbackResult(result, data => {
@@ -160,12 +187,10 @@ function rejoin() {
   socket.emit("rejoin_room", { code: session.code, token: session.token }, result => {
     if (!result?.ok) {
       clearSession();
-      attemptedReconnect = true;
-      toast(result?.error || "A sala anterior não existe mais.", "warning");
+      state = null;
       showScreen("homeScreen");
-      return;
+      toast(result?.error || "A sala anterior não existe mais.", "warning");
     }
-    attemptedReconnect = true;
   });
 }
 
@@ -182,31 +207,43 @@ function leaveRoom() {
     history.replaceState({}, "", location.pathname);
     showScreen("homeScreen");
     announcePresence();
-    renderDirectory();
     toast("Você voltou ao início.", "success");
   });
 }
 
 function confirmAndLeaveRoom() {
-  const activeMatch = state?.status === "playing";
-  const message = activeMatch
-    ? "Tem certeza que deseja voltar ao início? A partida atual será encerrada para todos os jogadores."
-    : "Tem certeza que deseja voltar ao início e sair desta sala?";
-
-  if (window.confirm(message)) {
-    leaveRoom();
-  }
+  const active = state && state.status !== "lobby";
+  const message = active
+    ? "Tem certeza que deseja sair? A partida será encerrada para os demais jogadores."
+    : "Tem certeza que deseja sair desta sala?";
+  if (window.confirm(message)) leaveRoom();
 }
 
 function goHome() {
-  if (state) {
-    confirmAndLeaveRoom();
-    return;
-  }
-  $("winnerModal").classList.add("hidden");
-  history.replaceState({}, "", location.pathname);
-  showScreen("homeScreen");
-  announcePresence();
+  if (state) confirmAndLeaveRoom();
+  else showScreen("homeScreen");
+}
+
+function addBot() {
+  socket.emit("add_bot", {}, result => {
+    if (!result?.ok) toast(result?.error || "Não foi possível adicionar o bot.", "error");
+  });
+}
+
+function fillBots() {
+  socket.emit("fill_bots", {}, result => {
+    if (!result?.ok) {
+      toast(result?.error || "Não foi possível completar a sala com bots.", "error");
+      return;
+    }
+    toast(`${result.added || 0} bot(s) adicionado(s).`, "success");
+  });
+}
+
+function removeBot(botId) {
+  socket.emit("remove_bot", { botId }, result => {
+    if (!result?.ok) toast(result?.error || "Não foi possível remover o bot.", "error");
+  });
 }
 
 function startGame() {
@@ -216,7 +253,11 @@ function startGame() {
 }
 
 function playCards() {
-  if (!state || selectedIds.size === 0) return;
+  if (!state || state.currentPlayerId !== state.me.id) return;
+  if (selectedIds.size === 0) {
+    toast("Selecione as cartas antes de clicar na mesa.", "warning");
+    return;
+  }
   socket.emit("play_cards", { cardIds: [...selectedIds] }, result => {
     if (!result?.ok) {
       toast(result?.error || "Jogada recusada.", "error");
@@ -232,52 +273,47 @@ function passTurn() {
   });
 }
 
+function modeText(mode) {
+  return mode === "points" ? "Pontuação • blocos de 4 • perde aos 31" : "Partida única";
+}
+
 function statusText(player) {
   if (player.status === "available") return "Disponível";
   if (player.status === "lobby") return player.roomCode ? `Em sala pública ${player.roomCode}` : "Em uma sala";
   if (player.status === "playing") return "Jogando agora";
-  if (player.status === "finished") return "Partida encerrada";
+  if (player.status === "finished") return "Entre rodadas";
   return "Online";
 }
 
 function renderDirectory() {
-  if (!$("onlinePlayers") || !$("openRooms")) return;
-
   $("onlineCount").textContent = `${directory.onlineCount || 0} online`;
-  $("onlineHelper").textContent = `${directory.availableCount || 0} jogador(es) disponível(is) para uma nova sala.`;
-  $("openRoomCount").textContent = `${directory.openRooms?.length || 0} sala${directory.openRooms?.length === 1 ? "" : "s"}`;
+  $("onlineHelper").textContent = `${directory.availableCount || 0} jogador(es) disponível(is).`;
+  const rooms = Array.isArray(directory.openRooms) ? directory.openRooms : [];
+  $("openRoomCount").textContent = `${rooms.length} sala${rooms.length === 1 ? "" : "s"}`;
 
   const players = Array.isArray(directory.players) ? directory.players : [];
-  if (players.length === 0) {
-    $("onlinePlayers").innerHTML = '<div class="empty-state">Nenhum jogador identificado neste momento.</div>';
-  } else {
-    $("onlinePlayers").innerHTML = players.map(player => {
-      const isMe = player.id === socket.id;
-      const available = player.status === "available";
-      return `<div class="online-item">
-        <span class="avatar small">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>
-        <span class="online-main">
-          <b>${escapeHtml(player.name)}${isMe ? " (você)" : ""}</b>
-          <small>${escapeHtml(statusText(player))}</small>
-        </span>
-        <span class="status-chip ${available ? "available" : "busy"}">${available ? "Livre" : "Ocupado"}</span>
-      </div>`;
-    }).join("");
-  }
+  $("onlinePlayers").innerHTML = players.length === 0
+    ? '<div class="empty-state">Nenhum jogador identificado neste momento.</div>'
+    : players.map(player => {
+        const isMe = player.id === socket.id;
+        const available = player.status === "available";
+        return `<div class="online-item">
+          <span class="avatar small">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>
+          <span class="online-main"><b>${escapeHtml(player.name)}${isMe ? " (você)" : ""}</b><small>${escapeHtml(statusText(player))}</small></span>
+          <span class="status-chip ${available ? "available" : "busy"}">${available ? "Livre" : "Ocupado"}</span>
+        </div>`;
+      }).join("");
 
-  const rooms = Array.isArray(directory.openRooms) ? directory.openRooms : [];
-  if (rooms.length === 0) {
-    $("openRooms").innerHTML = '<div class="empty-state">Nenhuma sala pública aguardando jogadores.</div>';
-  } else {
-    $("openRooms").innerHTML = rooms.map(room => `<div class="online-item room-list-item">
-      <span class="room-code-mini">${escapeHtml(room.code)}</span>
-      <span class="online-main">
-        <b>Sala de ${escapeHtml(room.hostName)}</b>
-        <small>${room.playerCount}/4 jogadores • ${room.connectedCount} conectado(s)</small>
-      </span>
-      <button class="btn primary compact join-open-room" data-room-code="${escapeHtml(room.code)}">Entrar</button>
-    </div>`).join("");
-  }
+  $("openRooms").innerHTML = rooms.length === 0
+    ? '<div class="empty-state">Nenhuma sala pública aguardando jogadores.</div>'
+    : rooms.map(room => `<div class="online-item room-list-item">
+        <span class="room-code-mini">${escapeHtml(room.code)}</span>
+        <span class="online-main">
+          <b>Sala de ${escapeHtml(room.hostName)}</b>
+          <small>${escapeHtml(modeText(room.mode))} • ${room.humanCount} pessoa(s) • ${room.botCount} bot(s)</small>
+        </span>
+        <button class="btn primary compact join-open-room" data-room-code="${escapeHtml(room.code)}">Entrar</button>
+      </div>`).join("");
 }
 
 function compareTuples(a, b) {
@@ -293,7 +329,6 @@ function compareTuples(a, b) {
 function analyze(cards) {
   const sorted = [...cards].sort((a, b) => a.rank - b.rank || a.suit - b.suit);
   const count = sorted.length;
-
   if (count === 1) return { valid: true, count, type: "Carta", strength: [sorted[0].rank, sorted[0].suit] };
   if (count === 2 && sorted[0].rank === sorted[1].rank) {
     return { valid: true, count, type: "Dupla", strength: [sorted[0].rank, Math.max(...sorted.map(card => card.suit))] };
@@ -304,22 +339,26 @@ function analyze(cards) {
   if (count !== 5) return { valid: false };
 
   const uniqueRanks = [...new Set(sorted.map(card => card.rank))];
-  const isStraight = uniqueRanks.length === 5 &&
-    uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
+  const isStraight = uniqueRanks.length === 5 && uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
   const isFlush = sorted.every(card => card.suit === sorted[0].suit);
   const counts = new Map();
   sorted.forEach(card => counts.set(card.rank, (counts.get(card.rank) || 0) + 1));
   const entries = [...counts.entries()].map(([rank, amount]) => ({ rank, amount }));
+  const four = entries.find(entry => entry.amount === 4);
   const triple = entries.find(entry => entry.amount === 3);
   const pair = entries.find(entry => entry.amount === 2);
 
   if (isStraight && isFlush) {
     const high = sorted[sorted.length - 1];
-    return { valid: true, count, type: "Sequência do mesmo naipe", strength: [3, high.rank, high.suit] };
+    return { valid: true, count, type: "Sequência do mesmo naipe", strength: [4, high.rank, high.suit] };
+  }
+  if (four) {
+    const kicker = sorted.find(card => card.rank !== four.rank);
+    return { valid: true, count, type: "Quadra + carta", strength: [3, four.rank, kicker.rank, kicker.suit] };
   }
   if (triple && pair) return { valid: true, count, type: "Full House", strength: [2, triple.rank] };
   if (isFlush) {
-    const descending = [...sorted].sort((a, b) => b.rank - a.rank).map(card => card.rank);
+    const descending = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit).map(card => card.rank);
     return { valid: true, count, type: "Flush", strength: [1, sorted[0].suit, ...descending] };
   }
   if (isStraight) {
@@ -339,43 +378,38 @@ function cardHtml(card) {
 }
 
 function miniDeck(count) {
-  const visible = Math.min(count, 13);
-  return `<div class="mini-deck">${Array.from({ length: visible }, () => '<span class="card-back"></span>').join("")}</div>`;
+  return `<div class="mini-deck">${Array.from({ length: Math.min(count, 13) }, () => '<span class="card-back"></span>').join("")}</div>`;
 }
 
 function playerSeatHtml(player, isMe = false) {
-  const active = state.currentPlayerId === player.id ? " active" : "";
-  const dot = player.connected ? "" : " off";
+  const bot = player.isBot ? " 🤖" : "";
   const meLabel = isMe ? " (você)" : "";
-  return {
-    html: `<div class="seat-name"><span class="online-dot${dot}"></span>${escapeHtml(player.name)}${meLabel}</div>
-      <div class="seat-meta">${player.cardCount} carta${player.cardCount === 1 ? "" : "s"}${player.isHost ? " • anfitrião" : ""}</div>
-      ${isMe ? "" : miniDeck(player.cardCount)}`,
-    active
-  };
+  return `<div class="seat-name"><span class="online-dot${player.connected ? "" : " off"}"></span>${escapeHtml(player.name)}${bot}${meLabel}</div>
+    <div class="seat-meta">${player.cardCount} carta${player.cardCount === 1 ? "" : "s"}${state.mode === "points" ? ` • ${player.score}/${state.scoreLimit} pts` : ""}</div>
+    ${isMe ? "" : miniDeck(player.cardCount)}`;
 }
 
 function renderLobby() {
   showScreen("lobbyScreen");
   $("roomCodeDisplay").textContent = state.code;
+  $("roomModeText").textContent = modeText(state.mode);
   $("playerCounter").textContent = `${state.players.length}/4`;
-  $("lobbyPlayers").innerHTML = state.players.map(player => `
-    <div class="lobby-player${player.connected ? "" : " offline"}">
-      <span class="avatar">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>
-      <span class="name">${escapeHtml(player.name)}</span>
-      <span class="player-tag">${player.id === state.me.id ? "VOCÊ" : ""}${player.isHost ? " ANFITRIÃO" : ""}</span>
-    </div>
-  `).join("");
-
   const amHost = state.me.id === state.hostId;
-  $("startGameBtn").classList.toggle("hidden", !amHost);
-  $("startGameBtn").disabled = state.players.length !== 4 || state.players.some(player => !player.connected);
-  $("lobbyHint").textContent =
-    state.players.length < 4
-      ? `Faltam ${4 - state.players.length} jogador(es).`
-      : state.players.some(player => !player.connected)
-        ? "Aguardando todos reconectarem."
-        : amHost ? "Todos prontos. Você pode iniciar." : "Aguardando o anfitrião iniciar.";
+
+  $("lobbyPlayers").innerHTML = state.players.map(player => `<div class="lobby-player${player.connected ? "" : " offline"}">
+      <span class="avatar">${escapeHtml(player.isBot ? "🤖" : player.name.charAt(0).toUpperCase())}</span>
+      <span class="name">${escapeHtml(player.name)}</span>
+      <span class="player-tag">${player.id === state.me.id ? "VOCÊ " : ""}${player.isBot ? "BOT " : ""}${player.isHost ? "ANFITRIÃO" : ""}</span>
+      ${amHost && player.isBot ? `<button class="bot-remove" data-bot-id="${player.id}" aria-label="Remover bot">×</button>` : ""}
+    </div>`).join("");
+
+  $("hostControls").classList.toggle("hidden", !amHost);
+  $("addBotBtn").disabled = state.players.length >= 4;
+  $("fillBotsBtn").disabled = state.players.length >= 4;
+  $("startGameBtn").disabled = state.players.length !== 4 || state.players.some(player => !player.isBot && !player.connected);
+  $("lobbyHint").textContent = state.players.length < 4
+    ? `Faltam ${4 - state.players.length} jogador(es). Você pode aguardar ou adicionar bots.`
+    : amHost ? "Mesa completa. Você pode iniciar." : "Aguardando o anfitrião iniciar.";
 }
 
 function relativePlayers() {
@@ -390,16 +424,30 @@ function relativePlayers() {
 
 function renderSeat(id, player, isMe = false) {
   const element = $(id);
-  const seat = playerSeatHtml(player, isMe);
-  element.innerHTML = seat.html;
-  element.classList.toggle("active", Boolean(seat.active));
+  element.innerHTML = playerSeatHtml(player, isMe);
+  element.classList.toggle("active", state.currentPlayerId === player.id);
   element.classList.toggle("offline", !player.connected);
+}
+
+function renderScoreboard() {
+  const board = $("scoreboard");
+  if (state.mode !== "points") {
+    board.classList.add("hidden");
+    return;
+  }
+  board.classList.remove("hidden");
+  const sorted = [...state.players].sort((a, b) => a.score - b.score || a.name.localeCompare(b.name, "pt-BR"));
+  board.innerHTML = sorted.map((player, index) => `<div class="score-item"><span>${index + 1}º ${escapeHtml(player.name)}${player.isBot ? " 🤖" : ""}</span><b>${player.score}/${state.scoreLimit} pts</b></div>`).join("");
 }
 
 function renderGame() {
   showScreen("gameScreen");
   $("gameRoomCode").textContent = state.code;
+  $("roundText").textContent = state.mode === "points"
+    ? `Bloco ${state.blockNumber} • Rodada ${state.roundInBlock} de ${state.roundsPerBlock} • ${state.scoreLimit} pontos elimina`
+    : "Partida única";
   $("pauseBanner").classList.toggle("hidden", !state.paused);
+  renderScoreboard();
 
   const relative = relativePlayers();
   renderSeat("seatSouth", relative.south, true);
@@ -411,12 +459,14 @@ function renderGame() {
   const current = state.players.find(player => player.id === state.currentPlayerId);
   $("turnStatus").textContent = state.paused
     ? "Partida pausada"
-    : myTurn ? "Sua vez" : current ? `Vez de ${current.name}` : "Partida encerrada";
+    : state.closingPhase
+      ? myTurn ? "Jogada final: sua vez" : current ? `Jogada final: vez de ${current.name}` : "Finalizando a rodada"
+      : myTurn ? "Sua vez" : current ? `Vez de ${current.name}` : "Rodada encerrada";
 
   if (state.lastPlay) {
     $("lastPlayLabel").textContent = `${state.lastPlay.playerName} — ${state.lastPlay.combo.type}`;
     $("playedCards").innerHTML = state.lastPlay.cards.map(cardHtml).join("");
-    $("playedCards").querySelectorAll(".card").forEach(card => card.disabled = true);
+    $("playedCards").querySelectorAll(".card").forEach(card => { card.disabled = true; });
   } else {
     $("lastPlayLabel").textContent = "Mesa livre";
     $("playedCards").innerHTML = "";
@@ -424,7 +474,6 @@ function renderGame() {
 
   const currentCardIds = new Set(state.me.hand.map(card => card.id));
   selectedIds = new Set([...selectedIds].filter(id => currentCardIds.has(id)));
-
   $("hand").innerHTML = state.me.hand.map(cardHtml).join("");
   $("hand").classList.toggle("disabled", !myTurn);
   $("hand").querySelectorAll(".card").forEach(element => {
@@ -443,11 +492,15 @@ function renderGame() {
   const combo = analyze(selectedCards);
   $("selectionText").textContent = selectedCards.length === 0
     ? "Selecione suas cartas"
-    : combo.valid
-      ? `${selectedCards.length} selecionada(s): ${combo.type}`
-      : `${selectedCards.length} selecionada(s): combinação inválida`;
-
-  $("playBtn").disabled = !myTurn || selectedCards.length === 0;
+    : combo.valid ? `${selectedCards.length} selecionada(s): ${combo.type}` : `${selectedCards.length} selecionada(s): combinação inválida`;
+  $("tableActionHint").textContent = myTurn
+    ? selectedCards.length
+      ? state.closingPhase ? "Clique na mesa para fazer sua última jogada" : "Clique na mesa para confirmar a jogada"
+      : state.closingPhase ? "Faça uma última jogada maior ou passe" : "Selecione as cartas e clique aqui para jogar"
+    : state.closingPhase ? "Aguardando as jogadas finais" : "Aguarde sua vez";
+  $("playSurface").classList.toggle("disabled", !myTurn);
+  $("playSurface").setAttribute("aria-disabled", String(!myTurn));
+  $("playSurface").classList.toggle("ready", myTurn && selectedCards.length > 0);
   $("passBtn").disabled = !myTurn || !state.lastPlay;
   $("hintBtn").disabled = !myTurn;
 }
@@ -471,8 +524,7 @@ function combinations(array, amount) {
 
 function beatsLocal(combo, targetCards) {
   const target = analyze(targetCards);
-  return combo.valid && target.valid && combo.count === target.count &&
-    compareTuples(combo.strength, target.strength) > 0;
+  return combo.valid && target.valid && combo.count === target.count && compareTuples(combo.strength, target.strength) > 0;
 }
 
 function legalLocalPlay(cards) {
@@ -497,30 +549,64 @@ function giveHint() {
       if (combo) legal.push({ cards, combo });
     }
   }
-
-  if (legal.length === 0) {
+  if (!legal.length) {
     toast("Você não possui uma jogada válida. Passe.", "warning");
     return;
   }
-
   legal.sort((a, b) => {
     if (!state.lastPlay && a.combo.count !== b.combo.count) return b.combo.count - a.combo.count;
     return compareTuples(a.combo.strength, b.combo.strength);
   });
-
   selectedIds = new Set(legal[0].cards.map(card => card.id));
   renderGame();
   toast(`Sugestão: ${legal[0].combo.type}.`, "success");
 }
 
+function renderRoundResults() {
+  const container = $("roundResults");
+  if (!state.roundResults?.length) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = state.roundResults.map(result => `<div class="result-row">
+    <span>${escapeHtml(result.name)}</span>
+    <small>${result.remainingCards} carta(s) restantes</small>
+    <b class="${result.delta > 0 ? "negative" : "positive"}">${state.mode === "points" ? `+${result.delta} pts • total ${result.score}` : result.remainingCards === 0 ? "Sem cartas" : `${result.remainingCards} carta(s)`}</b>
+  </div>`).join("");
+}
+
 function renderWinner() {
-  const winner = state.players.find(player => player.id === state.winnerId);
-  const won = state.winnerId === state.me.id;
-  $("winnerTitle").textContent = won ? "Você venceu!" : `${winner?.name || "Um jogador"} venceu`;
-  $("winnerText").textContent = won
-    ? "Parabéns! Você foi o primeiro a ficar sem cartas."
-    : "A partida terminou. O anfitrião pode iniciar uma revanche.";
-  $("rematchBtn").classList.toggle("hidden", state.me.id !== state.hostId);
+  const handWinner = state.players.find(player => player.id === state.winnerId);
+  const amHost = state.me.id === state.hostId;
+  const finalSeries = state.mode === "points" && state.status === "finished";
+
+  if (finalSeries) {
+    const winners = state.players.filter(player => state.seriesWinnerIds.includes(player.id));
+    const losers = state.players.filter(player => state.seriesLoserIds.includes(player.id));
+    const winnerNames = winners.map(player => player.name).join(" e ");
+    const loserNames = losers.map(player => player.name).join(" e ");
+    const amLoser = losers.some(player => player.id === state.me.id);
+    $("winnerTitle").textContent = amLoser
+      ? "Você atingiu 31 pontos e perdeu"
+      : winners.some(player => player.id === state.me.id) ? "Você venceu!" : `${winnerNames} venceu`;
+    $("winnerText").textContent = `${loserNames} chegou a ${state.scoreLimit} pontos ou mais. A partida terminou após ${state.roundNumber} rodadas.`;
+    $("nextRoundBtn").textContent = "Nova partida";
+  } else if (state.status === "block_finished") {
+    $("winnerTitle").textContent = `Bloco ${state.blockNumber} concluído`;
+    $("winnerText").textContent = `Ninguém atingiu ${state.scoreLimit} pontos. Os pontos continuam acumulados e serão jogadas mais quatro rodadas.`;
+    $("nextRoundBtn").textContent = "Começar próximo bloco";
+  } else if (state.status === "round_finished") {
+    $("winnerTitle").textContent = handWinner?.id === state.me.id ? "Você bateu!" : `${handWinner?.name || "Um jogador"} bateu`;
+    $("winnerText").textContent = `Rodada ${state.roundInBlock} de ${state.roundsPerBlock} do bloco ${state.blockNumber} concluída.`;
+    $("nextRoundBtn").textContent = "Próxima rodada";
+  } else {
+    $("winnerTitle").textContent = handWinner?.id === state.me.id ? "Você venceu!" : `${handWinner?.name || "Um jogador"} venceu`;
+    $("winnerText").textContent = "Todos tiveram sua jogada final e a partida terminou.";
+    $("nextRoundBtn").textContent = "Jogar novamente";
+  }
+
+  renderRoundResults();
+  $("nextRoundBtn").classList.toggle("hidden", !amHost);
   $("winnerModal").classList.remove("hidden");
 }
 
@@ -530,13 +616,13 @@ function renderState() {
   if (!session || session.token !== state.me.token) {
     setSession({ code: state.code, token: state.me.token, playerId: state.me.id, name: state.me.name });
   }
-
   if (state.status === "lobby") {
+    selectedIds.clear();
     $("winnerModal").classList.add("hidden");
     renderLobby();
   } else {
     renderGame();
-    if (state.status === "finished") renderWinner();
+    if (["round_finished", "block_finished", "finished"].includes(state.status)) renderWinner();
     else $("winnerModal").classList.add("hidden");
   }
 }
@@ -548,7 +634,6 @@ socket.on("connect", () => {
   $("connectionText").textContent = "Servidor conectado.";
   announcePresence();
   if (getSession()) rejoin();
-  else attemptedReconnect = true;
 });
 
 socket.on("disconnect", () => {
@@ -558,60 +643,65 @@ socket.on("disconnect", () => {
 
 socket.on("room_state", nextState => {
   state = nextState;
-  selectedIds.clear();
   renderState();
 });
 
 socket.on("notice", message => toast(message.text, message.tone));
-
 socket.on("directory_state", nextDirectory => {
   directory = nextDirectory || { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
   renderDirectory();
 });
 
 $("createRoomBtn").addEventListener("click", createRoom);
+$("playBotsBtn").addEventListener("click", playAgainstBots);
 $("joinRoomBtn").addEventListener("click", () => joinRoom());
 $("startGameBtn").addEventListener("click", startGame);
+$("nextRoundBtn").addEventListener("click", () => {
+  $("winnerModal").classList.add("hidden");
+  startGame();
+});
+$("addBotBtn").addEventListener("click", addBot);
+$("fillBotsBtn").addEventListener("click", fillBots);
+$("lobbyPlayers").addEventListener("click", event => {
+  const button = event.target.closest(".bot-remove");
+  if (button) removeBot(button.dataset.botId);
+});
 $("leaveBtn").addEventListener("click", confirmAndLeaveRoom);
 $("gameLeaveBtn").addEventListener("click", confirmAndLeaveRoom);
 $("globalHomeBtn").addEventListener("click", goHome);
 $("copyRoomBtn").addEventListener("click", copyInvite);
 $("copyGameBtn").addEventListener("click", copyInvite);
-$("playBtn").addEventListener("click", playCards);
+$("playSurface").addEventListener("click", playCards);
+$("playSurface").addEventListener("keydown", event => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    playCards();
+  }
+});
 $("passBtn").addEventListener("click", passTurn);
 $("hintBtn").addEventListener("click", giveHint);
 $("homeRulesBtn").addEventListener("click", openRules);
 $("lobbyRulesBtn").addEventListener("click", openRules);
 $("gameRulesBtn").addEventListener("click", openRules);
 $("closeRulesBtn").addEventListener("click", closeRules);
-$("rulesModal").addEventListener("click", event => {
-  if (event.target.id === "rulesModal") closeRules();
-});
-$("rematchBtn").addEventListener("click", () => {
-  $("winnerModal").classList.add("hidden");
-  startGame();
-});
+$("rulesModal").addEventListener("click", event => { if (event.target.id === "rulesModal") closeRules(); });
 $("winnerLobbyBtn").addEventListener("click", goHome);
 
-$("roomCodeInput").addEventListener("input", event => {
-  event.target.value = cleanCode(event.target.value);
-});
-
+$("roomCodeInput").addEventListener("input", event => { event.target.value = cleanCode(event.target.value); });
 ["createName", "joinName"].forEach(inputId => {
   $(inputId).addEventListener("input", event => schedulePresence(event.target.value, inputId));
 });
-
-$("createName").addEventListener("keydown", event => {
-  if (event.key === "Enter") createRoom();
-});
-$("roomCodeInput").addEventListener("keydown", event => {
-  if (event.key === "Enter") joinRoom();
-});
-
+$("createName").addEventListener("keydown", event => { if (event.key === "Enter") createRoom(); });
+$("roomCodeInput").addEventListener("keydown", event => { if (event.key === "Enter") joinRoom(); });
 $("openRooms").addEventListener("click", event => {
   const button = event.target.closest(".join-open-room");
-  if (!button) return;
-  joinRoom(button.dataset.roomCode);
+  if (button) joinRoom(button.dataset.roomCode);
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Enter" && state?.status === "playing" && state.currentPlayerId === state.me.id && selectedIds.size > 0) {
+    playCards();
+  }
 });
 
 const codeFromUrl = cleanCode(new URLSearchParams(location.search).get("room"));

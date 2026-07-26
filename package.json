@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "private": true,
-  "description": "Pôquer Chinês multiplayer online com salas para 4 jogadores.",
+  "description": "Pôquer Chinês online com salas públicas, bots jogáveis, batida com jogadas finais e pontuação por blocos de quatro rodadas.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
