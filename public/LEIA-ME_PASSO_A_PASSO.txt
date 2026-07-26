@@ -1,0 +1,126 @@
+PÔQUER CHINÊS ONLINE — VERSÃO FINAL COMPLETA
+============================================
+
+Este arquivo já contém TODAS as alterações em uma única versão.
+Não é necessário instalar versões anteriores.
+
+RECURSOS INCLUÍDOS
+------------------
+- Quatro jogadores reais ou combinação de jogadores e bots.
+- Salas privadas e partidas públicas.
+- Lista de salas públicas abertas.
+- Lista de jogadores online.
+- Entrada direta em salas públicas.
+- Botão para voltar ao início.
+- Botão para sair da sala.
+- Reconexão de jogadores.
+- Clique no centro da mesa para confirmar a jogada.
+- Carta, dupla, trinca e combinações de cinco cartas.
+- Sequência, Flush, Full House, Quadra + carta e Sequência do mesmo naipe.
+- Pontuação por cartas restantes.
+- Blocos de quatro rodadas.
+- Os pontos ficam acumulados entre os blocos.
+- A partida só verifica o limite de 31 pontos ao final de cada bloco de quatro rodadas.
+- Se ninguém atingir 31 pontos, começam mais quatro rodadas.
+- Quando alguém bate, os três adversários têm uma última oportunidade, em ordem,
+  de jogar uma combinação superior ou passar.
+- O objetivo é permanecer com a menor pontuação.
+- Ao final do bloco em que alguém atingir 31 pontos ou mais, perde quem tiver
+  a maior pontuação. Empates na maior pontuação resultam em mais de um perdedor.
+
+ESTRUTURA CORRETA NO GITHUB
+---------------------------
+public/
+  app.js
+  index.html
+  style.css
+
+server.js
+package.json
+package-lock.json
+render.yaml
+README.md
+.gitignore
+
+ATUALIZAÇÃO DO GITHUB PELO NAVEGADOR
+------------------------------------
+1. Extraia este ZIP no computador.
+2. Abra o repositório poker-chines-online no GitHub.
+3. Clique em Add file.
+4. Clique em Upload files.
+5. Abra a pasta extraída.
+6. Selecione:
+   - public
+   - server.js
+   - package.json
+   - package-lock.json
+   - render.yaml
+   - README.md
+   - .gitignore
+7. Arraste tudo para a página de upload.
+8. Aguarde todos os arquivos terminarem de carregar.
+9. Em Commit message, escreva:
+   Atualizar jogo completo com todas as regras
+10. Escolha Commit directly to the main branch.
+11. Clique em Commit changes.
+
+IMPORTANTE:
+- Não envie o arquivo ZIP ao repositório.
+- Envie os arquivos e a pasta public que estão DENTRO do ZIP.
+- O server.js deve ficar na página inicial do repositório.
+- index.html, app.js e style.css devem ficar dentro de public.
+
+CONFIGURAÇÃO DO RENDER
+----------------------
+O serviço já existente deve continuar como Web Service.
+
+Build Command:
+corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+
+Start Command:
+node server.js
+
+Root Directory:
+deixe vazio
+
+Variável de ambiente:
+NODE_VERSION = 24.17.0
+
+PUBLICAÇÃO NO RENDER
+--------------------
+1. Abra o serviço poker-chines-online no Render.
+2. O Render normalmente inicia um deploy automático após o commit no GitHub.
+3. Abra a aba Events ou Logs.
+4. Aguarde aparecer:
+   Build successful
+   Running 'node server.js'
+   Pôquer Chinês Online rodando na porta...
+   Your service is live
+5. Caso o deploy não inicie:
+   - Clique em Manual Deploy.
+   - Clique em Deploy latest commit.
+6. Caso apareça cache antigo ou erro estranho:
+   - Clique em Manual Deploy.
+   - Clique em Clear build cache & deploy.
+7. Quando o status estiver Live, abra:
+   https://poker-chines-online.onrender.com
+8. Pressione Ctrl + F5 para carregar a versão nova.
+
+TESTE DO SERVIDOR
+-----------------
+Abra:
+https://poker-chines-online.onrender.com/health
+
+O resultado esperado é:
+{"ok":true}
+
+TESTE DO JOGO
+-------------
+1. Abra o endereço do jogo.
+2. Digite um nome.
+3. Crie uma sala pública ou privada.
+4. Adicione bots ou aguarde outros jogadores.
+5. Entre por quatro navegadores/perfis diferentes para testar sozinho.
+6. Inicie a partida.
+7. Selecione as cartas.
+8. Clique no centro da mesa para jogar.

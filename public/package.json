@@ -1,0 +1,18 @@
+{
+  "name": "poker-chines-online",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Pôquer Chinês online com salas públicas, bots, batida com jogadas finais e pontuação por blocos de quatro rodadas.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "5.2.1",
+    "socket.io": "4.8.3"
+  }
+}
