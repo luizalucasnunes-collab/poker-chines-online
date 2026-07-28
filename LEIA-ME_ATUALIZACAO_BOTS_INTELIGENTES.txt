@@ -1,0 +1,47 @@
+PÔQUER CHINÊS ONLINE v2.3 — BOTS MÉDIO E DIFÍCIL
+=================================================
+
+Este ZIP contém o projeto completo. Não precisa juntar com versões anteriores.
+
+NOVIDADES
+---------
+- Seletor de inteligência dos bots na página inicial.
+- Nível Médio: preserva combinações, controla cartas altas e reage aos adversários.
+- Nível Difícil: planeja a mão restante, estima turnos para terminar e pode passar estrategicamente.
+- O anfitrião pode alterar a dificuldade na sala de espera.
+- Todos os bots da sala usam a dificuldade escolhida.
+- A dificuldade aparece ao lado dos bots e nas salas públicas.
+- Os bots não veem as cartas escondidas dos adversários.
+
+ATUALIZAR O GITHUB
+------------------
+1. Extraia este ZIP.
+2. Abra o repositório poker-chines-online.
+3. Clique em Add file > Upload files.
+4. Arraste TODO o conteúdo extraído para o GitHub:
+   public, server.js, package.json, package-lock.json, render.yaml, README.md e .gitignore.
+5. Não envie o próprio ZIP.
+6. Aguarde o upload.
+7. Em Commit message, escreva:
+   Adicionar bots médio e difícil
+8. Selecione Commit directly to the main branch.
+9. Clique em Commit changes.
+
+ATUALIZAR O RENDER
+------------------
+1. Abra o serviço poker-chines-online.
+2. O deploy deve iniciar automaticamente.
+3. Aguarde aparecer Build successful e Your service is live.
+4. Se não iniciar: Manual Deploy > Deploy latest commit.
+5. Depois abra o jogo e pressione Ctrl + F5.
+
+CONFIGURAÇÕES
+-------------
+Build Command:
+corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+
+Start Command:
+node server.js
+
+Environment:
+NODE_VERSION = 24.17.0

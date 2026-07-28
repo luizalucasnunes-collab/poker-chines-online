@@ -464,3 +464,25 @@ select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(241,202,107
   .host-controls { flex-direction: column; }
   .host-controls .btn { width: 100%; }
 }
+
+
+/* Versão 2.3: níveis de inteligência dos bots */
+.bot-difficulty-control {
+  margin-top: 14px;
+  padding: 13px;
+  border-radius: 13px;
+  background: rgba(8, 29, 20, .72);
+  border: 1px solid rgba(241, 202, 107, .18);
+}
+.bot-difficulty-control label {
+  margin: 0;
+}
+.bot-difficulty-control small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.bot-difficulty-control select {
+  margin-top: 7px;
+}

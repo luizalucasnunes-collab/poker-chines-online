@@ -1,19 +1,49 @@
-# Pôquer Chinês Online v2.1
+# Pôquer Chinês Online v2.3
 
-Jogo multiplayer online para quatro jogadores, com salas públicas, bots e partidas por pontos.
+Jogo multiplayer online para quatro jogadores, com salas públicas, partidas privadas e bots inteligentes.
 
-## Regras de pontuação
+## Bots médio e difícil
 
-- Cada rodada começa com 13 cartas por jogador.
-- Quando alguém bate, os outros três jogadores têm uma última oportunidade, em ordem, para jogar uma combinação superior ou passar.
-- A rodada só termina depois dessas três jogadas finais.
-- Cada jogador soma a quantidade de cartas que restou em sua mão.
-- A pontuação é conferida ao final de cada bloco de 4 rodadas.
-- Se alguém tiver 31 pontos ou mais, essa pessoa perde e a partida termina.
-- Se ninguém atingir 31, começa outro bloco de 4 rodadas, mantendo os pontos acumulados.
-- O objetivo é permanecer com a menor pontuação.
+### Médio
 
-## Publicação
+- Preserva duplas, trincas e jogos de cinco cartas.
+- Avalia quantas jogadas ainda precisa para terminar.
+- Economiza Ás e 2 quando não há perigo imediato.
+- Fica mais agressivo quando um adversário está perto de bater.
+- Prioriza reduzir as cartas na jogada final.
+
+### Difícil
+
+- Usa planejamento por combinações da mão restante.
+- Estima o menor número de turnos para terminar.
+- Analisa as cartas já jogadas para valorizar cartas de controle.
+- Pode passar estrategicamente para não destruir uma mão forte.
+- Ajusta a agressividade conforme a pontuação e o risco dos adversários.
+- Escolhe entre decisões equivalentes para não ficar previsível.
+
+A inteligência usa apenas informações públicas sobre os adversários: quantidade de cartas, jogadas e passes. O bot não consulta as cartas escondidas dos outros jogadores.
+
+## Atualização no GitHub
+
+Envie todo o conteúdo desta pasta para a raiz do repositório:
+
+```text
+public/
+  app.js
+  index.html
+  style.css
+
+server.js
+package.json
+package-lock.json
+render.yaml
+README.md
+.gitignore
+```
+
+Depois faça um commit na branch `main`. O Render deverá publicar automaticamente.
+
+## Render
 
 Build Command:
 
@@ -27,10 +57,8 @@ Start Command:
 node server.js
 ```
 
+Variável:
 
-## Bots na versão 2.2
-
-- Na página inicial, use **Jogar agora contra 3 bots** para começar imediatamente.
-- Na sala de espera, o anfitrião pode usar **+1 Bot** ou **Completar com bots**.
-- Jogadores reais podem substituir bots em salas públicas enquanto a partida ainda não começou.
-- Os bots jogam e passam automaticamente quando chega a vez deles.
+```text
+NODE_VERSION=24.17.0
+```

@@ -34,6 +34,12 @@
               <option value="points">Partida por pontos (blocos de 4)</option>
             </select>
           </label>
+          <label>Inteligência dos bots
+            <select id="botDifficultySelect">
+              <option value="medium">Médio — estratégico e equilibrado</option>
+              <option value="hard" selected>Difícil — planejamento avançado</option>
+            </select>
+          </label>
           <label class="check-label">
             <input id="publicRoomCheck" type="checkbox" checked>
             <span>Mostrar esta sala na lista pública</span>
@@ -100,6 +106,15 @@
         <article class="panel">
           <div class="panel-heading"><h2>Jogadores</h2><span id="playerCounter" class="pill">0/4</span></div>
           <div id="lobbyPlayers" class="lobby-players"></div>
+          <div id="botDifficultyControl" class="bot-difficulty-control hidden">
+            <label>Dificuldade dos bots
+              <select id="lobbyBotDifficultySelect">
+                <option value="medium">Médio</option>
+                <option value="hard">Difícil</option>
+              </select>
+            </label>
+            <small>O anfitrião pode alterar antes de iniciar.</small>
+          </div>
           <div id="hostControls" class="host-controls hidden">
             <button id="addBotBtn" class="btn ghost">+1 Bot</button>
             <button id="fillBotsBtn" class="btn ghost">🤖 Completar com bots</button>
@@ -171,6 +186,7 @@
         <div><b>Blocos de rodadas</b><span>Os pontos são conferidos a cada 4 rodadas. Se ninguém atingir 31, começa outro bloco de 4, mantendo o total acumulado.</span></div>
         <div><b>Batida</b><span>Quando alguém joga suas últimas cartas, cada adversário ainda faz uma última jogada ou passa. A rodada termina somente depois que todos tiverem essa oportunidade.</span></div>
         <div><b>Rodada</b><span>Após três passes consecutivos, a mesa é liberada para quem fez a última jogada.</span></div>
+        <div><b>Bots inteligentes</b><span>No nível médio, preservam combinações e reagem ao risco. No difícil, planejam as próximas jogadas, controlam cartas altas e podem passar estrategicamente.</span></div>
       </div>
       <p class="rule-note">As sequências seguem a ordem contínua das cartas, de 3 até 2.</p>
     </div>

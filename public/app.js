@@ -126,8 +126,10 @@ function createRoom() {
     return;
   }
   const mode = $("gameModeSelect").value;
+  const botDifficulty = $("botDifficultySelect").value;
   const isPublic = $("publicRoomCheck").checked;
-  socket.emit("create_room", { name, isPublic, mode }, result => {
+  localStorage.setItem("pokerChinesBotDifficulty", botDifficulty);
+  socket.emit("create_room", { name, isPublic, mode, botDifficulty }, result => {
     callbackResult(result, data => {
       setSession({ code: data.code, token: data.token, playerId: data.playerId, name });
       history.replaceState({}, "", `?room=${data.code}`);
@@ -144,10 +146,13 @@ function playAgainstBots() {
     return;
   }
   const mode = $("gameModeSelect").value;
+  const botDifficulty = $("botDifficultySelect").value;
+  localStorage.setItem("pokerChinesBotDifficulty", botDifficulty);
   socket.emit("create_room", {
     name,
     isPublic: false,
     mode,
+    botDifficulty,
     autoBots: 3,
     autoStartBots: true
   }, result => {
@@ -240,6 +245,17 @@ function fillBots() {
   });
 }
 
+function updateBotDifficulty() {
+  const difficulty = $("lobbyBotDifficultySelect").value;
+  socket.emit("update_bot_difficulty", { difficulty }, result => {
+    if (!result?.ok) {
+      toast(result?.error || "Não foi possível alterar a dificuldade.", "error");
+      return;
+    }
+    localStorage.setItem("pokerChinesBotDifficulty", difficulty);
+  });
+}
+
 function removeBot(botId) {
   socket.emit("remove_bot", { botId }, result => {
     if (!result?.ok) toast(result?.error || "Não foi possível remover o bot.", "error");
@@ -277,6 +293,10 @@ function modeText(mode) {
   return mode === "points" ? "Pontuação • blocos de 4 • perde aos 31" : "Partida única";
 }
 
+function botDifficultyText(difficulty) {
+  return difficulty === "hard" ? "Difícil" : "Médio";
+}
+
 function statusText(player) {
   if (player.status === "available") return "Disponível";
   if (player.status === "lobby") return player.roomCode ? `Em sala pública ${player.roomCode}` : "Em uma sala";
@@ -310,7 +330,7 @@ function renderDirectory() {
         <span class="room-code-mini">${escapeHtml(room.code)}</span>
         <span class="online-main">
           <b>Sala de ${escapeHtml(room.hostName)}</b>
-          <small>${escapeHtml(modeText(room.mode))} • ${room.humanCount} pessoa(s) • ${room.botCount} bot(s)</small>
+          <small>${escapeHtml(modeText(room.mode))} • Bots ${escapeHtml(botDifficultyText(room.botDifficulty))} • ${room.humanCount} pessoa(s) • ${room.botCount} bot(s)</small>
         </span>
         <button class="btn primary compact join-open-room" data-room-code="${escapeHtml(room.code)}">Entrar</button>
       </div>`).join("");
@@ -383,27 +403,30 @@ function miniDeck(count) {
 
 function playerSeatHtml(player, isMe = false) {
   const bot = player.isBot ? " 🤖" : "";
+  const botLevel = player.isBot ? ` • ${botDifficultyText(player.botDifficulty || state.botDifficulty)}` : "";
   const meLabel = isMe ? " (você)" : "";
   return `<div class="seat-name"><span class="online-dot${player.connected ? "" : " off"}"></span>${escapeHtml(player.name)}${bot}${meLabel}</div>
-    <div class="seat-meta">${player.cardCount} carta${player.cardCount === 1 ? "" : "s"}${state.mode === "points" ? ` • ${player.score}/${state.scoreLimit} pts` : ""}</div>
+    <div class="seat-meta">${player.cardCount} carta${player.cardCount === 1 ? "" : "s"}${botLevel}${state.mode === "points" ? ` • ${player.score}/${state.scoreLimit} pts` : ""}</div>
     ${isMe ? "" : miniDeck(player.cardCount)}`;
 }
 
 function renderLobby() {
   showScreen("lobbyScreen");
   $("roomCodeDisplay").textContent = state.code;
-  $("roomModeText").textContent = modeText(state.mode);
+  $("roomModeText").textContent = `${modeText(state.mode)} • Bots ${botDifficultyText(state.botDifficulty)}`;
   $("playerCounter").textContent = `${state.players.length}/4`;
   const amHost = state.me.id === state.hostId;
 
   $("lobbyPlayers").innerHTML = state.players.map(player => `<div class="lobby-player${player.connected ? "" : " offline"}">
       <span class="avatar">${escapeHtml(player.isBot ? "🤖" : player.name.charAt(0).toUpperCase())}</span>
       <span class="name">${escapeHtml(player.name)}</span>
-      <span class="player-tag">${player.id === state.me.id ? "VOCÊ " : ""}${player.isBot ? "BOT " : ""}${player.isHost ? "ANFITRIÃO" : ""}</span>
+      <span class="player-tag">${player.id === state.me.id ? "VOCÊ " : ""}${player.isBot ? `BOT ${botDifficultyText(player.botDifficulty || state.botDifficulty).toUpperCase()} ` : ""}${player.isHost ? "ANFITRIÃO" : ""}</span>
       ${amHost && player.isBot ? `<button class="bot-remove" data-bot-id="${player.id}" aria-label="Remover bot">×</button>` : ""}
     </div>`).join("");
 
   $("hostControls").classList.toggle("hidden", !amHost);
+  $("botDifficultyControl").classList.toggle("hidden", !amHost);
+  $("lobbyBotDifficultySelect").value = state.botDifficulty || "medium";
   $("addBotBtn").disabled = state.players.length >= 4;
   $("fillBotsBtn").disabled = state.players.length >= 4;
   $("startGameBtn").disabled = state.players.length !== 4 || state.players.some(player => !player.isBot && !player.connected);
@@ -662,6 +685,10 @@ $("nextRoundBtn").addEventListener("click", () => {
 });
 $("addBotBtn").addEventListener("click", addBot);
 $("fillBotsBtn").addEventListener("click", fillBots);
+$("lobbyBotDifficultySelect").addEventListener("change", updateBotDifficulty);
+$("botDifficultySelect").addEventListener("change", event => {
+  localStorage.setItem("pokerChinesBotDifficulty", event.target.value);
+});
 $("lobbyPlayers").addEventListener("click", event => {
   const button = event.target.closest(".bot-remove");
   if (button) removeBot(button.dataset.botId);
@@ -708,4 +735,8 @@ const codeFromUrl = cleanCode(new URLSearchParams(location.search).get("room"));
 if (codeFromUrl) $("roomCodeInput").value = codeFromUrl;
 const initialName = savedName();
 if (initialName) syncNameInputs(initialName);
+const savedBotDifficulty = localStorage.getItem("pokerChinesBotDifficulty");
+if (savedBotDifficulty === "medium" || savedBotDifficulty === "hard") {
+  $("botDifficultySelect").value = savedBotDifficulty;
+}
 renderDirectory();

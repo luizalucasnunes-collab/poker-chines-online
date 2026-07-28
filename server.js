@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "2.1.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "2.3.0" }));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -40,6 +40,14 @@ function normalizeRoomCode(value) {
 
 function normalizeMode(value) {
   return value === "points" ? "points" : "single";
+}
+
+function normalizeBotDifficulty(value) {
+  return value === "hard" ? "hard" : "medium";
+}
+
+function botDifficultyLabel(value) {
+  return value === "hard" ? "Difícil" : "Médio";
 }
 
 function updatePresence(socket, name = null) {
@@ -105,6 +113,7 @@ function directoryState() {
       humanCount: humanCount(room),
       botCount: botCount(room),
       mode: room.mode,
+      botDifficulty: room.botDifficulty,
       roundsPerBlock: room.roundsPerBlock,
       scoreLimit: room.scoreLimit
     }))
@@ -158,6 +167,7 @@ function makeBotPlayer(room) {
     socketId: null,
     connected: true,
     isBot: true,
+    difficulty: room.botDifficulty,
     hand: [],
     score: 0
   };
@@ -287,6 +297,7 @@ function stateFor(room, viewer) {
     status: room.status,
     isPublic: Boolean(room.isPublic),
     mode: room.mode,
+    botDifficulty: room.botDifficulty,
     roundsPerBlock: room.roundsPerBlock,
     scoreLimit: room.scoreLimit,
     roundNumber: room.roundNumber,
@@ -301,6 +312,7 @@ function stateFor(room, viewer) {
       name: player.name,
       connected: player.connected,
       isBot: player.isBot,
+      botDifficulty: player.isBot ? (player.difficulty || room.botDifficulty) : null,
       cardCount: player.hand.length,
       score: player.score,
       isHost: player.id === room.hostId
@@ -382,6 +394,7 @@ function startMatch(room, newSeries = false) {
   room.currentPlayerId = starter.id;
   room.lastPlay = null;
   room.lastPlayerId = null;
+  room.playedCards = [];
   room.passCount = 0;
   room.firstMove = true;
   room.winnerId = null;
@@ -400,6 +413,7 @@ function resetRoomToLobby(room) {
   room.currentPlayerId = null;
   room.lastPlay = null;
   room.lastPlayerId = null;
+  room.playedCards = [];
   room.passCount = 0;
   room.firstMove = true;
   room.winnerId = null;
@@ -523,6 +537,8 @@ function performPlay(room, player, cards, combo) {
   const selected = new Set(cards.map(card => card.id));
   player.hand = player.hand.filter(card => !selected.has(card.id));
   room.lastPlay = { cards: sortCards(cards), combo, playerId: player.id };
+  if (!Array.isArray(room.playedCards)) room.playedCards = [];
+  room.playedCards.push(...cards.map(card => ({ id: card.id, rank: card.rank, suit: card.suit })));
   room.lastPlayerId = player.id;
   room.passCount = 0;
   room.firstMove = false;
@@ -601,14 +617,257 @@ function legalPlays(room, player) {
   return legal;
 }
 
+
+function bitCount(value) {
+  let count = 0;
+  let remaining = value >>> 0;
+  while (remaining) {
+    remaining &= remaining - 1;
+    count += 1;
+  }
+  return count;
+}
+
+function buildBotAnalysisContext(hand) {
+  const cards = sortCards(hand);
+  const idToBit = new Map(cards.map((card, index) => [card.id, 1 << index]));
+  const fullMask = (1 << cards.length) - 1;
+  const masksByCardIndex = Array.from({ length: cards.length }, () => []);
+  const fiveMasks = [];
+  const participation = new Map(cards.map(card => [card.id, 0]));
+
+  for (const size of [1, 2, 3, 5]) {
+    if (cards.length < size) continue;
+    for (const subset of combinations(cards, size)) {
+      const combo = analyze(subset);
+      if (!combo.valid) continue;
+      const mask = subset.reduce((value, card) => value | idToBit.get(card.id), 0);
+      subset.forEach(card => {
+        const index = Math.log2(idToBit.get(card.id));
+        masksByCardIndex[index].push(mask);
+      });
+      if (size === 5) {
+        fiveMasks.push(mask);
+        subset.forEach(card => participation.set(card.id, participation.get(card.id) + 1));
+      }
+    }
+  }
+
+  const minTurnsMemo = new Map([[0, 0]]);
+  function minTurns(mask) {
+    if (minTurnsMemo.has(mask)) return minTurnsMemo.get(mask);
+    const firstBit = mask & -mask;
+    const firstIndex = Math.log2(firstBit);
+    let best = bitCount(mask);
+    for (const playMask of masksByCardIndex[firstIndex]) {
+      if ((playMask & mask) !== playMask) continue;
+      best = Math.min(best, 1 + minTurns(mask ^ playMask));
+      if (best === 1) break;
+    }
+    minTurnsMemo.set(mask, best);
+    return best;
+  }
+
+  return { cards, idToBit, fullMask, fiveMasks, participation, minTurns };
+}
+
+function cardsMask(context, cards) {
+  return cards.reduce((mask, card) => mask | (context.idToBit.get(card.id) || 0), 0);
+}
+
+function cardsFromMask(context, mask) {
+  return context.cards.filter((_card, index) => mask & (1 << index));
+}
+
+function handStructureScore(hand, context = null, mask = null) {
+  if (!hand.length) return 0;
+  const rankCounts = new Map();
+  const suitCounts = new Map();
+  for (const card of hand) {
+    rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1);
+    suitCounts.set(card.suit, (suitCounts.get(card.suit) || 0) + 1);
+  }
+
+  let score = 0;
+  for (const amount of rankCounts.values()) {
+    if (amount === 2) score += 13;
+    else if (amount === 3) score += 28;
+    else if (amount === 4) score += 38;
+  }
+
+  for (const amount of suitCounts.values()) {
+    if (amount >= 4) score += (amount - 3) * 5;
+  }
+
+  const uniqueRanks = [...rankCounts.keys()].sort((a, b) => a - b);
+  let currentRun = 1;
+  let bestRun = 1;
+  for (let index = 1; index < uniqueRanks.length; index++) {
+    if (uniqueRanks[index] === uniqueRanks[index - 1] + 1) currentRun += 1;
+    else currentRun = 1;
+    bestRun = Math.max(bestRun, currentRun);
+  }
+  score += Math.max(0, bestRun - 2) * 5;
+
+  if (context && mask !== null) {
+    let availableFiveCardGames = 0;
+    for (const fiveMask of context.fiveMasks) {
+      if ((fiveMask & mask) === fiveMask) availableFiveCardGames += 1;
+    }
+    score += Math.min(availableFiveCardGames, 10) * 3;
+  }
+
+  return score;
+}
+
+function brokenCombinationPenalty(originalHand, playedCards, remainingHand, combo, context) {
+  if (!remainingHand.length) return 0;
+  const originalRanks = new Map();
+  const playedRanks = new Map();
+  const remainingRanks = new Map();
+
+  originalHand.forEach(card => originalRanks.set(card.rank, (originalRanks.get(card.rank) || 0) + 1));
+  playedCards.forEach(card => playedRanks.set(card.rank, (playedRanks.get(card.rank) || 0) + 1));
+  remainingHand.forEach(card => remainingRanks.set(card.rank, (remainingRanks.get(card.rank) || 0) + 1));
+
+  let penalty = 0;
+  for (const [rank, originalAmount] of originalRanks.entries()) {
+    const used = playedRanks.get(rank) || 0;
+    const left = remainingRanks.get(rank) || 0;
+    if (originalAmount >= 2 && used > 0 && left > 0) {
+      if (originalAmount === 2) penalty += 20;
+      else if (originalAmount === 3) penalty += 28;
+      else penalty += 34;
+    }
+  }
+
+  if (combo.count < 5) {
+    for (const card of playedCards) {
+      penalty += Math.min(context.participation.get(card.id) || 0, 5) * 2.5;
+    }
+  }
+
+  return penalty;
+}
+
+function comboPowerCost(combo) {
+  if (!combo?.strength) return 0;
+  return combo.strength.reduce((total, value, index) => total + Number(value || 0) * (index === 0 ? 4 : 1), 0);
+}
+
+function publicDangerLevel(room, player) {
+  const opponents = room.players.filter(item => item.id !== player.id);
+  const minimumCards = Math.min(...opponents.map(item => item.hand.length));
+  if (minimumCards <= 1) return 3;
+  if (minimumCards <= 2) return 2;
+  if (minimumCards <= 4) return 1;
+  return 0;
+}
+
+function remainingControlScore(room, player, remainingHand) {
+  const playedCards = room.playedCards || [];
+  const higherPlayed = rank => playedCards.filter(card => card.rank > rank).length;
+  let score = 0;
+  for (const card of remainingHand) {
+    if (card.rank === 12) score += 10;
+    else if (card.rank === 11) score += 5 + Math.min(3, higherPlayed(card.rank));
+    else if (card.rank === 10) score += 2;
+  }
+  return score;
+}
+
+function evaluateBotPlay(room, player, play, context, difficulty) {
+  const playedMask = cardsMask(context, play.cards);
+  const remainingMask = context.fullMask ^ playedMask;
+  const remainingHand = cardsFromMask(context, remainingMask);
+  const danger = publicDangerLevel(room, player);
+  const remainingTurns = context.minTurns(remainingMask);
+  const structure = handStructureScore(remainingHand, context, remainingMask);
+  const broken = brokenCombinationPenalty(player.hand, play.cards, remainingHand, play.combo, context);
+  const powerCost = comboPowerCost(play.combo);
+  const control = remainingControlScore(room, player, remainingHand);
+  const isOpening = !room.lastPlay;
+  const finishes = remainingHand.length === 0;
+  const finalPhase = room.closingPhase;
+  const nearestOpponent = Math.min(...room.players.filter(item => item.id !== player.id).map(item => item.hand.length));
+
+  let score = 0;
+
+  if (finalPhase) {
+    score += play.cards.length * 260;
+    score -= remainingHand.length * 120;
+    score -= remainingTurns * 70;
+    if (finishes) score += 10000;
+    return score;
+  }
+
+  score += play.cards.length * (difficulty === "hard" ? 44 : 38);
+  score -= remainingTurns * (difficulty === "hard" ? 105 : 78);
+  score += structure * (difficulty === "hard" ? 2.8 : 1.9);
+  score -= broken * (difficulty === "hard" ? 1.55 : 1.15);
+  score += control * (difficulty === "hard" ? 1.5 : 0.9);
+
+  if (finishes) score += 12000;
+
+  if (isOpening) {
+    score += play.cards.length * (difficulty === "hard" ? 30 : 22);
+    if (nearestOpponent <= 1 && play.combo.count === 1) score -= 180;
+    if (nearestOpponent <= 2 && play.combo.count >= 2) score += 90;
+  } else {
+    score -= powerCost * (difficulty === "hard" ? 2.4 : 1.7);
+  }
+
+  for (const card of play.cards) {
+    if (card.rank === 12) score -= danger >= 2 ? 5 : (difficulty === "hard" ? 55 : 38);
+    else if (card.rank === 11) score -= danger >= 2 ? 2 : (difficulty === "hard" ? 20 : 13);
+  }
+
+  if (danger >= 1) {
+    score += play.cards.length * danger * 22;
+    score -= remainingTurns * danger * 18;
+  }
+
+  if (danger >= 2 && room.lastPlay?.combo.count === 1) {
+    score += powerCost * 3.2;
+  }
+
+  if (room.mode === "points") {
+    const proximity = Math.max(0, player.score - 20);
+    score += play.cards.length * proximity * 1.8;
+    score -= remainingHand.length * proximity * 1.2;
+  }
+
+  return score;
+}
+
 function chooseBotPlay(room, player) {
   const legal = legalPlays(room, player);
   if (!legal.length) return null;
-  legal.sort((a, b) => {
-    if (!room.lastPlay && a.combo.count !== b.combo.count) return b.combo.count - a.combo.count;
+
+  const difficulty = normalizeBotDifficulty(player.difficulty || room.botDifficulty);
+  const context = buildBotAnalysisContext(player.hand);
+  const evaluated = legal.map(play => ({
+    ...play,
+    aiScore: evaluateBotPlay(room, player, play, context, difficulty)
+  }));
+
+  evaluated.sort((a, b) => {
+    if (b.aiScore !== a.aiScore) return b.aiScore - a.aiScore;
     return compareTuples(a.combo.strength, b.combo.strength);
   });
-  return legal[0];
+
+  const best = evaluated[0];
+  let chosen = best;
+  if (difficulty === "hard") {
+    const nearBest = evaluated.filter(item => item.aiScore >= best.aiScore - 5).slice(0, 3);
+    if (nearBest.length > 1) chosen = nearBest[crypto.randomInt(0, nearBest.length)];
+  }
+
+  if (room.closingPhase || !room.lastPlay || chosen.cards.length === player.hand.length) return chosen;
+
+  const danger = publicDangerLevel(room, player);
+  const passThreshold = danger >= 2 ? -1000 : difficulty === "hard" ? -28 : -42;
+  return chosen.aiScore < passThreshold ? null : chosen;
 }
 
 function clearBotTimer(code) {
@@ -660,6 +919,7 @@ io.on("connection", socket => {
       const name = normalizeName(payload?.name);
       if (name.length < 2) throw new Error("Digite um nome com pelo menos 2 caracteres.");
       const mode = normalizeMode(payload?.mode);
+      const botDifficulty = normalizeBotDifficulty(payload?.botDifficulty);
       const code = createRoomCode();
       const player = makeHumanPlayer(name, socket);
       const room = {
@@ -667,6 +927,7 @@ io.on("connection", socket => {
         status: "lobby",
         isPublic: payload?.isPublic !== false,
         mode,
+        botDifficulty,
         roundsPerBlock: 4,
         scoreLimit: 31,
         roundNumber: 0,
@@ -675,6 +936,7 @@ io.on("connection", socket => {
         currentPlayerId: null,
         lastPlay: null,
         lastPlayerId: null,
+        playedCards: [],
         passCount: 0,
         firstMove: true,
         winnerId: null,
@@ -756,6 +1018,27 @@ io.on("connection", socket => {
       emitRoom(room);
     } catch (error) {
       callback({ ok: false, error: error.message || "Falha ao reconectar." });
+    }
+  });
+
+  socket.on("update_bot_difficulty", (payload, callback = () => {}) => {
+    try {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && roomPlayer(room, socket.data.playerId);
+      if (!room || !player) throw new Error("Você não está em uma sala.");
+      if (player.id !== room.hostId) throw new Error("Somente o anfitrião pode alterar a dificuldade.");
+      if (room.status !== "lobby") throw new Error("A dificuldade só pode ser alterada antes da partida.");
+
+      room.botDifficulty = normalizeBotDifficulty(payload?.difficulty);
+      room.players.filter(item => item.isBot).forEach(bot => {
+        bot.difficulty = room.botDifficulty;
+      });
+
+      callback({ ok: true, difficulty: room.botDifficulty });
+      emitNotice(room, `Bots ajustados para o nível ${botDifficultyLabel(room.botDifficulty)}.`, "success");
+      emitRoom(room);
+    } catch (error) {
+      callback({ ok: false, error: error.message || "Não foi possível alterar a dificuldade." });
     }
   });
 
@@ -934,5 +1217,5 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v2.1 rodando na porta ${PORT}`);
+  console.log(`Pôquer Chinês Online v2.3 rodando na porta ${PORT}`);
 });
