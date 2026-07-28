@@ -1,0 +1,124 @@
+PÔQUER CHINÊS ONLINE — VERSÃO 2.5 COMPLETA
+===========================================
+
+Esta versão contém todas as funções anteriores e as correções abaixo:
+
+1. BOT ESPECIALISTA
+- Novo nível “Especialista”.
+- Analisa a organização completa da própria mão.
+- Tenta terminar em menos jogadas.
+- Preserva duplas, trincas e jogos de cinco cartas.
+- Considera quantas cartas os adversários possuem.
+- Protege cartas de controle, como Ás e 2.
+- Fica mais agressivo quando alguém está perto de bater.
+- Considera a pontuação acumulada.
+- Usa apenas informações públicas e as próprias cartas.
+
+2. TEMPO POR JOGADA
+- O anfitrião escolhe 30 ou 60 segundos.
+- A escolha pode ser alterada na sala antes da partida.
+- Se o tempo acabar com uma jogada na mesa, o jogador passa automaticamente.
+- Se a mesa estiver livre, o sistema faz uma jogada válida automática.
+- O relógio pausa durante desconexões.
+
+3. REGRA DO FLUSH
+- Primeiro é comparado o naipe.
+- Ordem dos naipes: Ouros, Copas, Espadas e Paus.
+- Se os Flushes forem do mesmo naipe, vence aquele com a maior carta.
+
+4. BOTÃO DE DICA
+- As cartas sugeridas sobem temporariamente.
+- Depois de aproximadamente 2,4 segundos, elas abaixam novamente.
+- A dica não seleciona definitivamente as cartas.
+- As cartas que o jogador já havia selecionado permanecem selecionadas.
+
+5. REVANCHE PARA TODOS
+- Todos os jogadores humanos podem clicar para continuar.
+- Após uma rodada: “Pronto para próxima rodada”.
+- Após quatro rodadas: “Pronto para próximo bloco”.
+- Após o encerramento: “Pedir revanche”.
+- A próxima etapa começa automaticamente quando todos confirmarem.
+- Bots são considerados automaticamente prontos.
+
+ATUALIZAR O GITHUB
+-------------------
+1. Extraia este ZIP.
+2. Abra o repositório poker-chines-online no GitHub.
+3. Clique em Add file.
+4. Clique em Upload files.
+5. Arraste todo o conteúdo extraído:
+   - public
+   - server.js
+   - package.json
+   - package-lock.json
+   - render.yaml
+   - README.md
+   - .gitignore
+   - LEIA-ME_VERSAO_2.5.txt
+6. Não envie o próprio ZIP.
+7. Aguarde todos os arquivos carregarem.
+8. Em Commit message, escreva:
+   Adicionar bot especialista e correções da versão 2.5
+9. Selecione Commit directly to the main branch.
+10. Clique em Commit changes.
+
+ESTRUTURA CORRETA
+-----------------
+public/
+  app.js
+  index.html
+  style.css
+
+server.js
+package.json
+package-lock.json
+render.yaml
+README.md
+.gitignore
+
+ATUALIZAR O RENDER
+------------------
+O Render normalmente inicia o deploy automaticamente depois do commit.
+
+Caso não inicie:
+1. Abra o serviço poker-chines-online.
+2. Clique em Manual Deploy.
+3. Clique em Deploy latest commit.
+
+Caso apareça erro de cache:
+1. Clique em Manual Deploy.
+2. Clique em Clear build cache & deploy.
+
+CONFIGURAÇÕES DO RENDER
+-----------------------
+Build Command:
+corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+
+Start Command:
+node server.js
+
+Root Directory:
+deixe vazio
+
+Environment:
+NODE_VERSION = 24.17.0
+
+TESTAR A PUBLICAÇÃO
+-------------------
+1. Aguarde aparecer “Your service is live”.
+2. Abra:
+   https://poker-chines-online.onrender.com
+3. Pressione Ctrl + F5.
+4. Crie uma sala.
+5. Escolha Bot Especialista.
+6. Escolha 30 ou 60 segundos.
+7. Teste o botão Dica.
+8. Termine uma rodada e confirme a revanche em todos os navegadores.
+
+TESTE DO SERVIDOR
+-----------------
+Abra:
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true,"version":"2.5.0"}

@@ -1,4 +1,4 @@
-# Pôquer Chinês Online v2.3
+# Pôquer Chinês Online v2.5
 
 Jogo multiplayer online para quatro jogadores, com salas públicas, partidas privadas e bots inteligentes.
 
@@ -62,3 +62,20 @@ Variável:
 ```text
 NODE_VERSION=24.17.0
 ```
+
+## Relógio por jogada
+
+Antes de iniciar, o anfitrião escolhe **30 ou 60 segundos** para cada jogada. O contador é controlado pelo servidor e aparece para todos os jogadores.
+
+- Com uma jogada na mesa, o fim do tempo gera um passe automático.
+- Com a mesa livre, o sistema baixa automaticamente a combinação válida mais econômica para evitar que a partida fique travada.
+- Se alguém desconectar, a partida e o relógio ficam pausados; ao reconectar, o jogador recebe um novo tempo completo.
+- Os últimos 10 segundos aparecem em alerta, e os últimos 5 segundos ficam destacados em vermelho.
+
+
+## Novidades da versão 2.5
+
+- Nível de bot **Especialista**, com análise da estrutura da mão e risco dos adversários.
+- Flush comparado primeiro pelo naipe e depois pela maior carta.
+- A dica destaca as cartas temporariamente e depois as abaixa.
+- Todos os jogadores humanos podem confirmar a próxima rodada ou revanche; ela começa quando todos estiverem prontos.

@@ -11,9 +11,12 @@ const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"]
 
 let state = null;
 let selectedIds = new Set();
+let hintedIds = new Set();
+let hintTimer = null;
 let toastTimer = null;
 let directory = { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
 let presenceTimer = null;
+let turnCountdownTimer = null;
 
 const $ = id => document.getElementById(id);
 const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
@@ -21,6 +24,7 @@ const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
 function showScreen(id) {
   screens.forEach(screenId => $(screenId).classList.toggle("hidden", screenId !== id));
   $("globalHomeBtn").classList.toggle("hidden", id === "homeScreen");
+  if (id !== "gameScreen") stopTurnCountdown();
 }
 
 function cleanName(value) {
@@ -127,9 +131,11 @@ function createRoom() {
   }
   const mode = $("gameModeSelect").value;
   const botDifficulty = $("botDifficultySelect").value;
+  const turnDuration = Number($("turnDurationSelect").value) === 60 ? 60 : 30;
   const isPublic = $("publicRoomCheck").checked;
   localStorage.setItem("pokerChinesBotDifficulty", botDifficulty);
-  socket.emit("create_room", { name, isPublic, mode, botDifficulty }, result => {
+  localStorage.setItem("pokerChinesTurnDuration", String(turnDuration));
+  socket.emit("create_room", { name, isPublic, mode, botDifficulty, turnDuration }, result => {
     callbackResult(result, data => {
       setSession({ code: data.code, token: data.token, playerId: data.playerId, name });
       history.replaceState({}, "", `?room=${data.code}`);
@@ -147,12 +153,15 @@ function playAgainstBots() {
   }
   const mode = $("gameModeSelect").value;
   const botDifficulty = $("botDifficultySelect").value;
+  const turnDuration = Number($("turnDurationSelect").value) === 60 ? 60 : 30;
   localStorage.setItem("pokerChinesBotDifficulty", botDifficulty);
+  localStorage.setItem("pokerChinesTurnDuration", String(turnDuration));
   socket.emit("create_room", {
     name,
     isPublic: false,
     mode,
     botDifficulty,
+    turnDuration,
     autoBots: 3,
     autoStartBots: true
   }, result => {
@@ -256,6 +265,17 @@ function updateBotDifficulty() {
   });
 }
 
+function updateTurnDuration() {
+  const turnDuration = Number($("lobbyTurnDurationSelect").value) === 60 ? 60 : 30;
+  socket.emit("update_turn_duration", { turnDuration }, result => {
+    if (!result?.ok) {
+      toast(result?.error || "Não foi possível alterar o tempo por jogada.", "error");
+      return;
+    }
+    localStorage.setItem("pokerChinesTurnDuration", String(turnDuration));
+  });
+}
+
 function removeBot(botId) {
   socket.emit("remove_bot", { botId }, result => {
     if (!result?.ok) toast(result?.error || "Não foi possível remover o bot.", "error");
@@ -294,7 +314,9 @@ function modeText(mode) {
 }
 
 function botDifficultyText(difficulty) {
-  return difficulty === "hard" ? "Difícil" : "Médio";
+  if (difficulty === "expert") return "Especialista";
+  if (difficulty === "hard") return "Difícil";
+  return "Médio";
 }
 
 function statusText(player) {
@@ -330,7 +352,7 @@ function renderDirectory() {
         <span class="room-code-mini">${escapeHtml(room.code)}</span>
         <span class="online-main">
           <b>Sala de ${escapeHtml(room.hostName)}</b>
-          <small>${escapeHtml(modeText(room.mode))} • Bots ${escapeHtml(botDifficultyText(room.botDifficulty))} • ${room.humanCount} pessoa(s) • ${room.botCount} bot(s)</small>
+          <small>${escapeHtml(modeText(room.mode))} • ${Number(room.turnDuration) === 60 ? 60 : 30}s/jogada • Bots ${escapeHtml(botDifficultyText(room.botDifficulty))} • ${room.humanCount} pessoa(s) • ${room.botCount} bot(s)</small>
         </span>
         <button class="btn primary compact join-open-room" data-room-code="${escapeHtml(room.code)}">Entrar</button>
       </div>`).join("");
@@ -378,8 +400,8 @@ function analyze(cards) {
   }
   if (triple && pair) return { valid: true, count, type: "Full House", strength: [2, triple.rank] };
   if (isFlush) {
-    const descending = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit).map(card => card.rank);
-    return { valid: true, count, type: "Flush", strength: [1, sorted[0].suit, ...descending] };
+    const highest = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit)[0];
+    return { valid: true, count, type: "Flush", strength: [1, sorted[0].suit, highest.rank] };
   }
   if (isStraight) {
     const high = sorted[sorted.length - 1];
@@ -413,7 +435,7 @@ function playerSeatHtml(player, isMe = false) {
 function renderLobby() {
   showScreen("lobbyScreen");
   $("roomCodeDisplay").textContent = state.code;
-  $("roomModeText").textContent = `${modeText(state.mode)} • Bots ${botDifficultyText(state.botDifficulty)}`;
+  $("roomModeText").textContent = `${modeText(state.mode)} • ${state.turnDuration || 30}s por jogada • Bots ${botDifficultyText(state.botDifficulty)}`;
   $("playerCounter").textContent = `${state.players.length}/4`;
   const amHost = state.me.id === state.hostId;
 
@@ -426,7 +448,9 @@ function renderLobby() {
 
   $("hostControls").classList.toggle("hidden", !amHost);
   $("botDifficultyControl").classList.toggle("hidden", !amHost);
+  $("turnDurationControl").classList.toggle("hidden", !amHost);
   $("lobbyBotDifficultySelect").value = state.botDifficulty || "medium";
+  $("lobbyTurnDurationSelect").value = String(state.turnDuration || 30);
   $("addBotBtn").disabled = state.players.length >= 4;
   $("fillBotsBtn").disabled = state.players.length >= 4;
   $("startGameBtn").disabled = state.players.length !== 4 || state.players.some(player => !player.isBot && !player.connected);
@@ -463,12 +487,52 @@ function renderScoreboard() {
   board.innerHTML = sorted.map((player, index) => `<div class="score-item"><span>${index + 1}º ${escapeHtml(player.name)}${player.isBot ? " 🤖" : ""}</span><b>${player.score}/${state.scoreLimit} pts</b></div>`).join("");
 }
 
+function stopTurnCountdown() {
+  if (turnCountdownTimer) clearInterval(turnCountdownTimer);
+  turnCountdownTimer = null;
+}
+
+function updateTurnCountdown() {
+  const timer = $("turnTimer");
+  const text = $("turnTimerText");
+  const bar = $("turnProgressBar");
+  if (!timer || !text || !bar) return;
+
+  const active = state && state.status === "playing" && !state.paused && state.currentPlayerId && state.turnDeadline;
+  if (!active) {
+    timer.classList.add("paused");
+    timer.classList.remove("warning", "critical");
+    text.textContent = state?.paused ? "Pausado" : "--";
+    bar.style.width = "0%";
+    return;
+  }
+
+  timer.classList.remove("paused");
+  const duration = Number(state.turnDuration) === 60 ? 60 : 30;
+  const remainingMs = Math.max(0, Number(state.turnDeadline) - Date.now());
+  const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+  const percentage = Math.max(0, Math.min(100, (remainingMs / (duration * 1000)) * 100));
+
+  text.textContent = `${remainingSeconds}s`;
+  bar.style.width = `${percentage}%`;
+  timer.classList.toggle("warning", remainingSeconds <= 10 && remainingSeconds > 5);
+  timer.classList.toggle("critical", remainingSeconds <= 5);
+}
+
+function startTurnCountdown() {
+  stopTurnCountdown();
+  updateTurnCountdown();
+  if (state?.status === "playing") {
+    turnCountdownTimer = setInterval(updateTurnCountdown, 200);
+  }
+}
+
 function renderGame() {
   showScreen("gameScreen");
   $("gameRoomCode").textContent = state.code;
   $("roundText").textContent = state.mode === "points"
-    ? `Bloco ${state.blockNumber} • Rodada ${state.roundInBlock} de ${state.roundsPerBlock} • ${state.scoreLimit} pontos elimina`
-    : "Partida única";
+    ? `Bloco ${state.blockNumber} • Rodada ${state.roundInBlock} de ${state.roundsPerBlock} • ${state.scoreLimit} pontos elimina • ${state.turnDuration || 30}s por jogada`
+    : `Partida única • ${state.turnDuration || 30}s por jogada`;
   $("pauseBanner").classList.toggle("hidden", !state.paused);
   renderScoreboard();
 
@@ -497,14 +561,17 @@ function renderGame() {
 
   const currentCardIds = new Set(state.me.hand.map(card => card.id));
   selectedIds = new Set([...selectedIds].filter(id => currentCardIds.has(id)));
+  hintedIds = new Set([...hintedIds].filter(id => currentCardIds.has(id)));
   $("hand").innerHTML = state.me.hand.map(cardHtml).join("");
   $("hand").classList.toggle("disabled", !myTurn);
   $("hand").querySelectorAll(".card").forEach(element => {
     const id = Number(element.dataset.cardId);
     element.classList.toggle("selected", selectedIds.has(id));
+    element.classList.toggle("hinted", hintedIds.has(id));
     element.disabled = !myTurn;
     element.addEventListener("click", () => {
       if (!myTurn) return;
+      hintedIds.delete(id);
       if (selectedIds.has(id)) selectedIds.delete(id);
       else selectedIds.add(id);
       renderGame();
@@ -526,6 +593,7 @@ function renderGame() {
   $("playSurface").classList.toggle("ready", myTurn && selectedCards.length > 0);
   $("passBtn").disabled = !myTurn || !state.lastPlay;
   $("hintBtn").disabled = !myTurn;
+  startTurnCountdown();
 }
 
 function combinations(array, amount) {
@@ -580,9 +648,24 @@ function giveHint() {
     if (!state.lastPlay && a.combo.count !== b.combo.count) return b.combo.count - a.combo.count;
     return compareTuples(a.combo.strength, b.combo.strength);
   });
-  selectedIds = new Set(legal[0].cards.map(card => card.id));
+  clearTimeout(hintTimer);
+  hintedIds = new Set(legal[0].cards.map(card => card.id));
   renderGame();
-  toast(`Sugestão: ${legal[0].combo.type}.`, "success");
+  toast(`Sugestão: ${legal[0].combo.type}. As cartas abaixarão novamente.`, "success");
+  hintTimer = setTimeout(() => {
+    hintedIds.clear();
+    if (state?.status === "playing") renderGame();
+  }, 2400);
+}
+
+function requestRematch() {
+  socket.emit("request_rematch", {}, result => {
+    if (!result?.ok) {
+      toast(result?.error || "Não foi possível confirmar a revanche.", "error");
+      return;
+    }
+    toast(`Você está pronto (${result.votes}/${result.required}).`, "success");
+  });
 }
 
 function renderRoundResults() {
@@ -600,8 +683,8 @@ function renderRoundResults() {
 
 function renderWinner() {
   const handWinner = state.players.find(player => player.id === state.winnerId);
-  const amHost = state.me.id === state.hostId;
   const finalSeries = state.mode === "points" && state.status === "finished";
+  const alreadyReady = state.rematchVoteIds?.includes(state.me.id);
 
   if (finalSeries) {
     const winners = state.players.filter(player => state.seriesWinnerIds.includes(player.id));
@@ -629,7 +712,10 @@ function renderWinner() {
   }
 
   renderRoundResults();
-  $("nextRoundBtn").classList.toggle("hidden", !amHost);
+  $("nextRoundBtn").classList.remove("hidden");
+  $("nextRoundBtn").disabled = Boolean(alreadyReady);
+  if (alreadyReady) $("nextRoundBtn").textContent = "Aguardando os demais...";
+  $("rematchStatus").textContent = `${state.rematchVoteCount || 0}/${state.rematchRequired || 1} jogador(es) prontos`;
   $("winnerModal").classList.remove("hidden");
 }
 
@@ -679,15 +765,16 @@ $("createRoomBtn").addEventListener("click", createRoom);
 $("playBotsBtn").addEventListener("click", playAgainstBots);
 $("joinRoomBtn").addEventListener("click", () => joinRoom());
 $("startGameBtn").addEventListener("click", startGame);
-$("nextRoundBtn").addEventListener("click", () => {
-  $("winnerModal").classList.add("hidden");
-  startGame();
-});
+$("nextRoundBtn").addEventListener("click", requestRematch);
 $("addBotBtn").addEventListener("click", addBot);
 $("fillBotsBtn").addEventListener("click", fillBots);
 $("lobbyBotDifficultySelect").addEventListener("change", updateBotDifficulty);
+$("lobbyTurnDurationSelect").addEventListener("change", updateTurnDuration);
 $("botDifficultySelect").addEventListener("change", event => {
   localStorage.setItem("pokerChinesBotDifficulty", event.target.value);
+});
+$("turnDurationSelect").addEventListener("change", event => {
+  localStorage.setItem("pokerChinesTurnDuration", event.target.value === "60" ? "60" : "30");
 });
 $("lobbyPlayers").addEventListener("click", event => {
   const button = event.target.closest(".bot-remove");
@@ -736,7 +823,11 @@ if (codeFromUrl) $("roomCodeInput").value = codeFromUrl;
 const initialName = savedName();
 if (initialName) syncNameInputs(initialName);
 const savedBotDifficulty = localStorage.getItem("pokerChinesBotDifficulty");
-if (savedBotDifficulty === "medium" || savedBotDifficulty === "hard") {
+if (["medium", "hard", "expert"].includes(savedBotDifficulty)) {
   $("botDifficultySelect").value = savedBotDifficulty;
+}
+const savedTurnDuration = localStorage.getItem("pokerChinesTurnDuration");
+if (savedTurnDuration === "30" || savedTurnDuration === "60") {
+  $("turnDurationSelect").value = savedTurnDuration;
 }
 renderDirectory();

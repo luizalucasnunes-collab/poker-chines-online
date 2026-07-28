@@ -37,7 +37,14 @@
           <label>Inteligência dos bots
             <select id="botDifficultySelect">
               <option value="medium">Médio — estratégico e equilibrado</option>
-              <option value="hard" selected>Difícil — planejamento avançado</option>
+              <option value="hard">Difícil — planejamento avançado</option>
+              <option value="expert" selected>Especialista — análise completa da mão</option>
+            </select>
+          </label>
+          <label>Tempo para cada jogada
+            <select id="turnDurationSelect">
+              <option value="30" selected>30 segundos</option>
+              <option value="60">60 segundos</option>
             </select>
           </label>
           <label class="check-label">
@@ -111,9 +118,19 @@
               <select id="lobbyBotDifficultySelect">
                 <option value="medium">Médio</option>
                 <option value="hard">Difícil</option>
+                <option value="expert">Especialista</option>
               </select>
             </label>
             <small>O anfitrião pode alterar antes de iniciar.</small>
+          </div>
+          <div id="turnDurationControl" class="bot-difficulty-control hidden">
+            <label>Tempo para cada jogada
+              <select id="lobbyTurnDurationSelect">
+                <option value="30">30 segundos</option>
+                <option value="60">60 segundos</option>
+              </select>
+            </label>
+            <small>Quando o tempo acaba, o jogador passa; com a mesa livre, o sistema joga automaticamente.</small>
           </div>
           <div id="hostControls" class="host-controls hidden">
             <button id="addBotBtn" class="btn ghost">+1 Bot</button>
@@ -148,7 +165,13 @@
         <div id="seatEast" class="seat east"></div>
 
         <div class="table-center">
-          <div id="turnStatus" class="turn-status">Aguardando...</div>
+          <div class="turn-panel">
+            <div id="turnStatus" class="turn-status">Aguardando...</div>
+            <div id="turnTimer" class="turn-timer">
+              <span id="turnTimerText">30s</span>
+              <div class="turn-progress" aria-hidden="true"><span id="turnProgressBar"></span></div>
+            </div>
+          </div>
           <div id="playSurface" class="played-area" role="button" tabindex="0" aria-label="Jogar cartas selecionadas">
             <span id="lastPlayLabel">Mesa livre</span>
             <div id="playedCards" class="played-cards"></div>
@@ -180,13 +203,14 @@
         <div><b>Naipes</b><span>♦ Ouros, ♥ Copas, ♠ Espadas e ♣ Paus.</span></div>
         <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa e deve usá-lo na primeira combinação.</span></div>
         <div><b>Jogadas</b><span>Carta, dupla, trinca ou uma combinação de cinco cartas.</span></div>
-        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe.</span></div>
+        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe. No Flush, primeiro vale o naipe e depois a maior carta.</span></div>
         <div><b>Jogar</b><span>Selecione as cartas e clique no centro da mesa.</span></div>
         <div><b>Pontuação</b><span>Ao final de cada rodada, cada jogador soma 1 ponto por carta que permaneceu em sua mão.</span></div>
         <div><b>Blocos de rodadas</b><span>Os pontos são conferidos a cada 4 rodadas. Se ninguém atingir 31, começa outro bloco de 4, mantendo o total acumulado.</span></div>
         <div><b>Batida</b><span>Quando alguém joga suas últimas cartas, cada adversário ainda faz uma última jogada ou passa. A rodada termina somente depois que todos tiverem essa oportunidade.</span></div>
         <div><b>Rodada</b><span>Após três passes consecutivos, a mesa é liberada para quem fez a última jogada.</span></div>
-        <div><b>Bots inteligentes</b><span>No nível médio, preservam combinações e reagem ao risco. No difícil, planejam as próximas jogadas, controlam cartas altas e podem passar estrategicamente.</span></div>
+        <div><b>Bots inteligentes</b><span>Médio preserva combinações; Difícil planeja jogadas futuras; Especialista analisa a estrutura completa da mão, risco dos adversários e controle da mesa.</span></div>
+        <div><b>Tempo por jogada</b><span>O anfitrião escolhe 30 ou 60 segundos. Se o tempo acabar, o jogador passa automaticamente; com a mesa livre, o sistema faz uma jogada válida.</span></div>
       </div>
       <p class="rule-note">As sequências seguem a ordem contínua das cartas, de 3 até 2.</p>
     </div>
@@ -199,6 +223,7 @@
       <p id="winnerText"></p>
       <div id="roundResults" class="round-results"></div>
       <button id="nextRoundBtn" class="btn primary hidden">Próxima rodada</button>
+      <p id="rematchStatus" class="rematch-status"></p>
       <button id="winnerLobbyBtn" class="btn ghost">⌂ Voltar ao início</button>
     </div>
   </div>

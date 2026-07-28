@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "2.3.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "2.5.0" }));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -25,6 +25,7 @@ const BOT_NAMES = ["Lina Bot", "Mestre Bot", "Dragão Bot", "Panda Bot", "Tigre 
 const rooms = new Map();
 const onlineUsers = new Map();
 const botTimers = new Map();
+const turnTimers = new Map();
 
 function normalizeName(value) {
   return String(value || "")
@@ -43,11 +44,19 @@ function normalizeMode(value) {
 }
 
 function normalizeBotDifficulty(value) {
-  return value === "hard" ? "hard" : "medium";
+  if (value === "expert") return "expert";
+  if (value === "hard") return "hard";
+  return "medium";
+}
+
+function normalizeTurnDuration(value) {
+  return Number(value) === 60 ? 60 : 30;
 }
 
 function botDifficultyLabel(value) {
-  return value === "hard" ? "Difícil" : "Médio";
+  if (value === "expert") return "Especialista";
+  if (value === "hard") return "Difícil";
+  return "Médio";
 }
 
 function updatePresence(socket, name = null) {
@@ -115,7 +124,8 @@ function directoryState() {
       mode: room.mode,
       botDifficulty: room.botDifficulty,
       roundsPerBlock: room.roundsPerBlock,
-      scoreLimit: room.scoreLimit
+      scoreLimit: room.scoreLimit,
+      turnDuration: room.turnDuration
     }))
     .sort((a, b) => b.humanCount - a.humanCount || a.code.localeCompare(b.code));
 
@@ -247,8 +257,8 @@ function analyze(cards) {
   }
 
   if (isFlush) {
-    const descendingRanks = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit).map(card => card.rank);
-    return { valid: true, count, type: "Flush", category: 1, strength: [1, sorted[0].suit, ...descendingRanks] };
+    const highest = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit)[0];
+    return { valid: true, count, type: "Flush", category: 1, strength: [1, sorted[0].suit, highest.rank] };
   }
 
   if (isStraight) {
@@ -300,6 +310,8 @@ function stateFor(room, viewer) {
     botDifficulty: room.botDifficulty,
     roundsPerBlock: room.roundsPerBlock,
     scoreLimit: room.scoreLimit,
+    turnDuration: room.turnDuration,
+    turnDeadline: room.turnDeadline || null,
     roundNumber: room.roundNumber,
     blockNumber: room.roundNumber > 0 ? Math.floor((room.roundNumber - 1) / room.roundsPerBlock) + 1 : 1,
     roundInBlock: room.roundNumber > 0 ? ((room.roundNumber - 1) % room.roundsPerBlock) + 1 : 0,
@@ -331,11 +343,15 @@ function stateFor(room, viewer) {
     winnerId: room.winnerId,
     seriesWinnerIds: room.seriesWinnerIds || [],
     seriesLoserIds: room.seriesLoserIds || [],
-    roundResults: room.roundResults || []
+    roundResults: room.roundResults || [],
+    rematchVoteIds: [...(room.rematchVotes || new Set())],
+    rematchVoteCount: room.rematchVotes?.size || 0,
+    rematchRequired: room.players.filter(player => !player.isBot).length
   };
 }
 
 function emitRoom(room) {
+  syncTurnClock(room);
   room.updatedAt = Date.now();
   for (const player of room.players) {
     if (!player.isBot && player.connected && player.socketId) {
@@ -371,11 +387,103 @@ function validateTurn(room, player) {
   return null;
 }
 
+function clearTurnTimer(code) {
+  const timer = turnTimers.get(code);
+  if (timer) clearTimeout(timer);
+  turnTimers.delete(code);
+}
+
+function endTurn(room) {
+  clearTurnTimer(room.code);
+  room.currentPlayerId = null;
+  room.turnDeadline = null;
+  room.clockPlayerId = null;
+  room.clockSerial = null;
+}
+
+function beginTurn(room, playerId) {
+  clearTurnTimer(room.code);
+  room.currentPlayerId = playerId;
+  room.turnSerial = (room.turnSerial || 0) + 1;
+  room.turnDeadline = null;
+  room.clockPlayerId = null;
+  room.clockSerial = null;
+}
+
+function chooseTimeoutPlay(room, player) {
+  const legal = legalPlays(room, player);
+  if (!legal.length) return null;
+
+  legal.sort((a, b) => {
+    if (!room.lastPlay && a.combo.count !== b.combo.count) {
+      return b.combo.count - a.combo.count;
+    }
+    return compareTuples(a.combo.strength, b.combo.strength);
+  });
+  return legal[0];
+}
+
+function handleTurnTimeout(code, expectedPlayerId, expectedSerial) {
+  turnTimers.delete(code);
+  const room = rooms.get(code);
+  if (!room || room.status !== "playing" || isPaused(room)) return;
+  if (room.currentPlayerId !== expectedPlayerId || room.turnSerial !== expectedSerial) return;
+
+  room.turnDeadline = null;
+  const player = roomPlayer(room, expectedPlayerId);
+  if (!player) return;
+
+  if (room.lastPlay) {
+    emitNotice(room, `O tempo de ${player.name} acabou. A jogada foi passada automaticamente.`, "warning");
+    performPass(room, player);
+    return;
+  }
+
+  const automaticPlay = chooseTimeoutPlay(room, player);
+  if (automaticPlay) {
+    emitNotice(room, `O tempo de ${player.name} acabou. O sistema fez uma jogada automática.`, "warning");
+    performPlay(room, player, automaticPlay.cards, automaticPlay.combo);
+  }
+}
+
+function syncTurnClock(room) {
+  const shouldRun = room.status === "playing" && room.currentPlayerId && !isPaused(room);
+  if (!shouldRun) {
+    clearTurnTimer(room.code);
+    room.turnDeadline = null;
+    room.clockPlayerId = null;
+    room.clockSerial = null;
+    return;
+  }
+
+  const timerIsCurrent =
+    turnTimers.has(room.code) &&
+    room.clockPlayerId === room.currentPlayerId &&
+    room.clockSerial === room.turnSerial &&
+    Number(room.turnDeadline) > Date.now();
+
+  if (timerIsCurrent) return;
+
+  clearTurnTimer(room.code);
+  const durationMs = normalizeTurnDuration(room.turnDuration) * 1000;
+  const playerId = room.currentPlayerId;
+  const serial = room.turnSerial;
+  room.turnDeadline = Date.now() + durationMs;
+  room.clockPlayerId = playerId;
+  room.clockSerial = serial;
+
+  const timer = setTimeout(() => {
+    handleTurnTimeout(room.code, playerId, serial);
+  }, durationMs + 25);
+  turnTimers.set(room.code, timer);
+}
+
 function resetSeries(room) {
   room.roundNumber = 0;
   room.roundResults = [];
   room.seriesWinnerIds = [];
   room.seriesLoserIds = [];
+  room.rematchVotes = new Set();
   room.players.forEach(player => { player.score = 0; });
 }
 
@@ -391,7 +499,7 @@ function startMatch(room, newSeries = false) {
   const starter = room.players.find(player => player.hand.some(card => card.rank === 0 && card.suit === 0));
   room.roundNumber += 1;
   room.status = "playing";
-  room.currentPlayerId = starter.id;
+  beginTurn(room, starter.id);
   room.lastPlay = null;
   room.lastPlayerId = null;
   room.playedCards = [];
@@ -404,13 +512,15 @@ function startMatch(room, newSeries = false) {
   room.roundResults = [];
   room.seriesWinnerIds = [];
   room.seriesLoserIds = [];
+  room.rematchVotes = new Set();
   room.startedAt = Date.now();
 }
 
 function resetRoomToLobby(room) {
   clearBotTimer(room.code);
+  clearTurnTimer(room.code);
   room.status = "lobby";
-  room.currentPlayerId = null;
+  endTurn(room);
   room.lastPlay = null;
   room.lastPlayerId = null;
   room.playedCards = [];
@@ -423,6 +533,7 @@ function resetRoomToLobby(room) {
   room.roundResults = [];
   room.seriesWinnerIds = [];
   room.seriesLoserIds = [];
+  room.rematchVotes = new Set();
   room.roundNumber = 0;
   room.players.forEach(player => {
     player.hand = [];
@@ -441,9 +552,11 @@ function orderedPlayerIdsAfter(room, playerId) {
 
 function finishRound(room) {
   clearBotTimer(room.code);
-  room.currentPlayerId = null;
+  clearTurnTimer(room.code);
+  endTurn(room);
   room.closingPhase = false;
   room.closingQueue = [];
+  room.rematchVotes = new Set();
 
   const results = room.players.map(player => {
     const points = player.hand.length;
@@ -497,7 +610,7 @@ function startClosingPhase(room, hitter) {
     return;
   }
 
-  room.currentPlayerId = room.closingQueue[0];
+  beginTurn(room, room.closingQueue[0]);
 }
 
 function advanceClosingTurn(room, actingPlayer) {
@@ -511,7 +624,7 @@ function advanceClosingTurn(room, actingPlayer) {
     return true;
   }
 
-  room.currentPlayerId = room.closingQueue[0];
+  beginTurn(room, room.closingQueue[0]);
   return false;
 }
 
@@ -556,7 +669,7 @@ function performPlay(room, player, cards, combo) {
     return;
   }
 
-  room.currentPlayerId = nextPlayerId(room, player.id);
+  beginTurn(room, nextPlayerId(room, player.id));
   emitNotice(room, `${player.name} jogou ${combo.type}.`, "success");
   emitRoom(room);
 }
@@ -571,7 +684,7 @@ function performPass(room, player) {
   room.passCount += 1;
   if (room.passCount >= 3) {
     const opener = roomPlayer(room, room.lastPlayerId);
-    room.currentPlayerId = room.lastPlayerId;
+    beginTurn(room, room.lastPlayerId);
     room.lastPlay = null;
     room.lastPlayerId = null;
     room.passCount = 0;
@@ -579,7 +692,7 @@ function performPass(room, player) {
     emitRoom(room);
     return;
   }
-  room.currentPlayerId = nextPlayerId(room, player.id);
+  beginTurn(room, nextPlayerId(room, player.id));
   emitNotice(room, `${player.name} passou.`, "info");
   emitRoom(room);
 }
@@ -634,6 +747,7 @@ function buildBotAnalysisContext(hand) {
   const fullMask = (1 << cards.length) - 1;
   const masksByCardIndex = Array.from({ length: cards.length }, () => []);
   const fiveMasks = [];
+  const allPlayMasks = [];
   const participation = new Map(cards.map(card => [card.id, 0]));
 
   for (const size of [1, 2, 3, 5]) {
@@ -642,6 +756,7 @@ function buildBotAnalysisContext(hand) {
       const combo = analyze(subset);
       if (!combo.valid) continue;
       const mask = subset.reduce((value, card) => value | idToBit.get(card.id), 0);
+      allPlayMasks.push({ mask, count: size, strength: combo.strength });
       subset.forEach(card => {
         const index = Math.log2(idToBit.get(card.id));
         masksByCardIndex[index].push(mask);
@@ -668,7 +783,7 @@ function buildBotAnalysisContext(hand) {
     return best;
   }
 
-  return { cards, idToBit, fullMask, fiveMasks, participation, minTurns };
+  return { cards, idToBit, fullMask, fiveMasks, allPlayMasks, participation, minTurns };
 }
 
 function cardsMask(context, cards) {
@@ -776,6 +891,37 @@ function remainingControlScore(room, player, remainingHand) {
   return score;
 }
 
+function expertRemainingHandScore(remainingHand, remainingMask, context) {
+  if (!remainingHand.length) return 0;
+  let legalOptions = 0;
+  let fiveCardOptions = 0;
+  let largestNextPlay = 1;
+
+  for (const option of context.allPlayMasks) {
+    if ((option.mask & remainingMask) !== option.mask) continue;
+    legalOptions += 1;
+    largestNextPlay = Math.max(largestNextPlay, option.count);
+    if (option.count === 5) fiveCardOptions += 1;
+  }
+
+  const rankCounts = new Map();
+  remainingHand.forEach(card => rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1));
+  const isolatedCards = remainingHand.filter(card =>
+    rankCounts.get(card.rank) === 1 && (context.participation.get(card.id) || 0) === 0
+  ).length;
+
+  return Math.min(legalOptions, 45) * 1.5 + Math.min(fiveCardOptions, 12) * 5 + largestNextPlay * 13 - isolatedCards * 8;
+}
+
+function expertResponsePressure(room, player, play) {
+  if (!room.lastPlay || room.closingPhase) return 0;
+  const danger = publicDangerLevel(room, player);
+  const power = comboPowerCost(play.combo);
+  const opponentCards = room.players.filter(item => item.id !== player.id).map(item => item.hand.length);
+  const lowOpponentCount = opponentCards.filter(amount => amount <= 3).length;
+  return power * (danger * 1.8 + lowOpponentCount * 0.8);
+}
+
 function evaluateBotPlay(room, player, play, context, difficulty) {
   const playedMask = cardsMask(context, play.cards);
   const remainingMask = context.fullMask ^ playedMask;
@@ -801,25 +947,31 @@ function evaluateBotPlay(room, player, play, context, difficulty) {
     return score;
   }
 
-  score += play.cards.length * (difficulty === "hard" ? 44 : 38);
-  score -= remainingTurns * (difficulty === "hard" ? 105 : 78);
-  score += structure * (difficulty === "hard" ? 2.8 : 1.9);
-  score -= broken * (difficulty === "hard" ? 1.55 : 1.15);
-  score += control * (difficulty === "hard" ? 1.5 : 0.9);
+  const isExpert = difficulty === "expert";
+  const isAdvanced = difficulty === "hard" || isExpert;
+  score += play.cards.length * (isExpert ? 52 : isAdvanced ? 44 : 38);
+  score -= remainingTurns * (isExpert ? 128 : isAdvanced ? 105 : 78);
+  score += structure * (isExpert ? 3.6 : isAdvanced ? 2.8 : 1.9);
+  score -= broken * (isExpert ? 2.05 : isAdvanced ? 1.55 : 1.15);
+  score += control * (isExpert ? 1.9 : isAdvanced ? 1.5 : 0.9);
+  if (isExpert) {
+    score += expertRemainingHandScore(remainingHand, remainingMask, context);
+    score += expertResponsePressure(room, player, play);
+  }
 
   if (finishes) score += 12000;
 
   if (isOpening) {
-    score += play.cards.length * (difficulty === "hard" ? 30 : 22);
+    score += play.cards.length * (isExpert ? 36 : isAdvanced ? 30 : 22);
     if (nearestOpponent <= 1 && play.combo.count === 1) score -= 180;
     if (nearestOpponent <= 2 && play.combo.count >= 2) score += 90;
   } else {
-    score -= powerCost * (difficulty === "hard" ? 2.4 : 1.7);
+    score -= powerCost * (isExpert ? 2.7 : isAdvanced ? 2.4 : 1.7);
   }
 
   for (const card of play.cards) {
-    if (card.rank === 12) score -= danger >= 2 ? 5 : (difficulty === "hard" ? 55 : 38);
-    else if (card.rank === 11) score -= danger >= 2 ? 2 : (difficulty === "hard" ? 20 : 13);
+    if (card.rank === 12) score -= danger >= 2 ? 5 : (isExpert ? 68 : isAdvanced ? 55 : 38);
+    else if (card.rank === 11) score -= danger >= 2 ? 2 : (isExpert ? 27 : isAdvanced ? 20 : 13);
   }
 
   if (danger >= 1) {
@@ -866,7 +1018,7 @@ function chooseBotPlay(room, player) {
   if (room.closingPhase || !room.lastPlay || chosen.cards.length === player.hand.length) return chosen;
 
   const danger = publicDangerLevel(room, player);
-  const passThreshold = danger >= 2 ? -1000 : difficulty === "hard" ? -28 : -42;
+  const passThreshold = danger >= 2 ? -1000 : difficulty === "expert" ? -12 : difficulty === "hard" ? -28 : -42;
   return chosen.aiScore < passThreshold ? null : chosen;
 }
 
@@ -892,6 +1044,25 @@ function scheduleBotTurn(room) {
     else if (currentRoom.lastPlay) performPass(currentRoom, currentBot);
   }, 700 + crypto.randomInt(0, 700));
   botTimers.set(room.code, timer);
+}
+
+function rematchHumans(room) {
+  return room.players.filter(player => !player.isBot);
+}
+
+function allRematchVotesReceived(room) {
+  const humans = rematchHumans(room);
+  return humans.length > 0 && humans.every(player => room.rematchVotes?.has(player.id));
+}
+
+function tryStartVotedRematch(room) {
+  if (!["round_finished", "block_finished", "finished"].includes(room.status)) return false;
+  if (!allRematchVotesReceived(room) || !allReady(room)) return false;
+  const newSeries = room.status === "finished";
+  startMatch(room, newSeries);
+  emitNotice(room, `${roomPlayer(room, room.currentPlayerId).name} começa com o 3 de Ouros.`, "success");
+  emitRoom(room);
+  return true;
 }
 
 io.on("connection", socket => {
@@ -928,6 +1099,11 @@ io.on("connection", socket => {
         isPublic: payload?.isPublic !== false,
         mode,
         botDifficulty,
+        turnDuration: normalizeTurnDuration(payload?.turnDuration),
+        turnDeadline: null,
+        turnSerial: 0,
+        clockPlayerId: null,
+        clockSerial: null,
         roundsPerBlock: 4,
         scoreLimit: 31,
         roundNumber: 0,
@@ -946,6 +1122,7 @@ io.on("connection", socket => {
         seriesWinnerIds: [],
         seriesLoserIds: [],
         roundResults: [],
+        rematchVotes: new Set(),
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -1015,7 +1192,7 @@ io.on("connection", socket => {
       updatePresence(socket, player.name);
       callback({ ok: true, code, playerId: player.id, token: player.token });
       emitNotice(room, `${player.name} reconectou.`, "success");
-      emitRoom(room);
+      if (!tryStartVotedRematch(room)) emitRoom(room);
     } catch (error) {
       callback({ ok: false, error: error.message || "Falha ao reconectar." });
     }
@@ -1039,6 +1216,23 @@ io.on("connection", socket => {
       emitRoom(room);
     } catch (error) {
       callback({ ok: false, error: error.message || "Não foi possível alterar a dificuldade." });
+    }
+  });
+
+  socket.on("update_turn_duration", (payload, callback = () => {}) => {
+    try {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && roomPlayer(room, socket.data.playerId);
+      if (!room || !player) throw new Error("Você não está em uma sala.");
+      if (player.id !== room.hostId) throw new Error("Somente o anfitrião pode alterar o tempo.");
+      if (room.status !== "lobby") throw new Error("O tempo só pode ser alterado antes da partida.");
+
+      room.turnDuration = normalizeTurnDuration(payload?.turnDuration);
+      callback({ ok: true, turnDuration: room.turnDuration });
+      emitNotice(room, `Tempo por jogada ajustado para ${room.turnDuration} segundos.`, "success");
+      emitRoom(room);
+    } catch (error) {
+      callback({ ok: false, error: error.message || "Não foi possível alterar o tempo por jogada." });
     }
   });
 
@@ -1107,15 +1301,34 @@ io.on("connection", socket => {
       const player = room && roomPlayer(room, socket.data.playerId);
       if (!room || !player) throw new Error("Você não está em uma sala.");
       if (player.id !== room.hostId) throw new Error("Somente o anfitrião pode iniciar.");
-      if (!["lobby", "round_finished", "block_finished", "finished"].includes(room.status)) throw new Error("A partida já está acontecendo.");
+      if (room.status !== "lobby") throw new Error("Use o botão de revanche para iniciar a próxima rodada.");
 
-      const newSeries = room.status === "lobby" || room.status === "finished";
-      startMatch(room, newSeries);
+      startMatch(room, true);
       callback({ ok: true });
       emitNotice(room, `${roomPlayer(room, room.currentPlayerId).name} começa com o 3 de Ouros.`, "success");
       emitRoom(room);
     } catch (error) {
       callback({ ok: false, error: error.message || "Não foi possível iniciar." });
+    }
+  });
+
+  socket.on("request_rematch", (_payload, callback = () => {}) => {
+    try {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && roomPlayer(room, socket.data.playerId);
+      if (!room || !player) throw new Error("Você não está em uma sala.");
+      if (player.isBot) throw new Error("Bots não precisam confirmar a revanche.");
+      if (!["round_finished", "block_finished", "finished"].includes(room.status)) {
+        throw new Error("A revanche só pode ser solicitada após o fim da rodada.");
+      }
+
+      if (!room.rematchVotes) room.rematchVotes = new Set();
+      room.rematchVotes.add(player.id);
+      callback({ ok: true, votes: room.rematchVotes.size, required: rematchHumans(room).length });
+      emitNotice(room, `${player.name} está pronto para continuar.`, "success");
+      if (!tryStartVotedRematch(room)) emitRoom(room);
+    } catch (error) {
+      callback({ ok: false, error: error.message || "Não foi possível solicitar a revanche." });
     }
   });
 
@@ -1169,6 +1382,7 @@ io.on("connection", socket => {
 
     if (room.players.length === 0 || room.players.every(item => item.isBot)) {
       clearBotTimer(room.code);
+      clearTurnTimer(room.code);
       rooms.delete(room.code);
       broadcastDirectory();
       callback({ ok: true });
@@ -1210,6 +1424,7 @@ setInterval(() => {
     const idleLimit = allOffline ? 10 * 60 * 1000 : 6 * 60 * 60 * 1000;
     if (now - room.updatedAt > idleLimit) {
       clearBotTimer(code);
+      clearTurnTimer(code);
       rooms.delete(code);
     }
   }
@@ -1217,5 +1432,5 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v2.3 rodando na porta ${PORT}`);
+  console.log(`Pôquer Chinês Online v2.5 rodando na porta ${PORT}`);
 });

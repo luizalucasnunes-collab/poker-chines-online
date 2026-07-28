@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "2.3.0",
+  "version": "2.5.0",
   "private": true,
-  "description": "Pôquer Chinês online com salas públicas, bots médio/difícil, batida com jogadas finais e pontuação por blocos de quatro rodadas.",
+  "description": "Pôquer Chinês online com bot especialista, relógio de 30 ou 60 segundos, rematch por votação e regras completas.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
