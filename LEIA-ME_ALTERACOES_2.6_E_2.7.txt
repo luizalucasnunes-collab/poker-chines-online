@@ -1,0 +1,118 @@
+PÔQUER CHINÊS ONLINE — ALTERAÇÕES 2.6 E 2.7
+============================================
+
+Este ZIP contém o projeto completo com as duas atualizações reunidas.
+
+VERSÃO 2.6 — BOTS MELHORADOS
+----------------------------
+Os bots agora:
+- evitam quebrar duplas, trincas e jogos de cinco cartas sem necessidade;
+- analisam como a mão ficará depois da jogada;
+- estimam quantos turnos ainda precisam para terminar;
+- economizam Ás e 2 quando não há perigo;
+- usam cartas fortes quando um adversário está perto de bater;
+- evitam abrir carta única contra jogador com apenas uma carta;
+- evitam abrir dupla contra jogador com apenas duas cartas;
+- podem passar estrategicamente;
+- ficam mais agressivos perto dos 31 pontos;
+- analisam as jogadas finais após uma batida;
+- usam apenas as próprias cartas e informações públicas da partida.
+
+VERSÃO 2.7 — ORGANIZAÇÃO DA MÃO
+-------------------------------
+Durante a partida, cada jogador pode escolher:
+
+1. Por números
+   - 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A e 2;
+   - cartas de mesmo valor ficam juntas;
+   - dentro do mesmo valor, aplica-se a ordem dos naipes.
+
+2. Por naipes
+   - Ouros, Copas, Espadas e Paus;
+   - dentro de cada naipe, as cartas ficam do 3 até o 2.
+
+A preferência:
+- pode ser alterada a qualquer momento;
+- fica salva no navegador;
+- não desfaz as cartas selecionadas;
+- não altera as regras da partida.
+
+ATUALIZAR NO GITHUB
+-------------------
+1. Baixe e extraia este ZIP.
+2. Abra o repositório poker-chines-online no GitHub.
+3. Clique em Add file.
+4. Clique em Upload files.
+5. Arraste todo o conteúdo da pasta extraída:
+   - public
+   - server.js
+   - package.json
+   - package-lock.json
+   - render.yaml
+   - README.md
+   - .gitignore
+   - LEIA-ME_ALTERACOES_2.6_E_2.7.txt
+6. Não envie o próprio arquivo ZIP.
+7. Aguarde todos os arquivos terminarem de carregar.
+8. Em Commit message, escreva:
+   Reunir melhorias dos bots e organização da mão
+9. Selecione Commit directly to the main branch.
+10. Clique em Commit changes.
+
+ESTRUTURA CORRETA NO GITHUB
+---------------------------
+public/
+  app.js
+  index.html
+  style.css
+
+server.js
+package.json
+package-lock.json
+render.yaml
+README.md
+.gitignore
+
+ATUALIZAR NO RENDER
+-------------------
+O Render deve iniciar automaticamente depois do commit.
+
+Caso não inicie:
+1. Abra o serviço poker-chines-online.
+2. Clique em Manual Deploy.
+3. Clique em Deploy latest commit.
+
+Caso apareça erro de cache:
+1. Clique em Manual Deploy.
+2. Clique em Clear build cache & deploy.
+
+CONFIGURAÇÕES DO RENDER
+-----------------------
+Build Command:
+corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+
+Start Command:
+node server.js
+
+Root Directory:
+deixe vazio
+
+Environment:
+NODE_VERSION = 24.17.0
+
+DEPOIS DA PUBLICAÇÃO
+--------------------
+1. Aguarde aparecer Your service is live.
+2. Abra:
+   https://poker-chines-online.onrender.com
+3. Pressione Ctrl + F5.
+4. Durante a partida, teste o seletor Organizar mão.
+5. Teste os bots em diferentes dificuldades.
+
+TESTE DO SERVIDOR
+-----------------
+Abra:
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true,"version":"2.7.0"}

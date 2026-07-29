@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "2.5.0",
+  "version": "2.7.0",
   "private": true,
-  "description": "Pôquer Chinês online com bot especialista, relógio de 30 ou 60 segundos, rematch por votação e regras completas.",
+  "description": "Pôquer Chinês online com bots estratégicos da versão 2.6 e organização da mão por números ou naipes da versão 2.7.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

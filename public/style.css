@@ -167,8 +167,18 @@ input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(241,202,107,
 .hand.disabled .card:hover { transform: none; }
 .action-dock {
   position: fixed; z-index: 8; left: 50%; bottom: 15px; transform: translateX(-50%);
-  display: flex; gap: 9px; padding: 9px; border-radius: 16px; background: rgba(6,25,18,.94);
+  display: flex; align-items: center; gap: 9px; padding: 9px; border-radius: 16px; background: rgba(6,25,18,.94);
   border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.hand-sort-control {
+  display: flex; align-items: center; gap: 8px; margin: 0; padding: 0 4px;
+  color: var(--muted); font-size: 11px; white-space: nowrap;
+}
+.hand-sort-control span { font-weight: 900; }
+.hand-sort-control select {
+  width: auto; min-width: 126px; margin: 0; padding: 9px 30px 9px 10px;
+  border-radius: 10px; background: #102f23; color: var(--cream);
+  border: 1px solid rgba(241,202,107,.24); font-weight: 800;
 }
 .toast {
   position: fixed; z-index: 50; top: 18px; left: 50%; transform: translateX(-50%) translateY(-30px);
@@ -227,8 +237,10 @@ input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(241,202,107,
   .played-area { min-height: 145px; }
   .card { width: 51px; height: 78px; flex-basis: 51px; }
   .hand .card { margin-left: -27px; }
-  .action-dock { width: calc(100% - 22px); justify-content: center; }
+  .action-dock { width: calc(100% - 22px); justify-content: center; flex-wrap: wrap; }
   .action-dock .btn { padding: 10px 12px; }
+  .hand-sort-control { flex: 1 1 100%; justify-content: center; }
+  .hand-sort-control select { min-width: 150px; }
 }
 
 /* Navegação global e descoberta de jogadores */

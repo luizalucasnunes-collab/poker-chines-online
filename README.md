@@ -1,27 +1,44 @@
-# Pôquer Chinês Online v2.5
+# Pôquer Chinês Online v2.6
 
-Jogo multiplayer online para quatro jogadores, com salas públicas, partidas privadas e bots inteligentes.
+Jogo multiplayer online para quatro jogadores, com salas públicas, partidas privadas, bots e pontuação em blocos de quatro rodadas.
 
-## Bots médio e difícil
+## Inteligência dos bots redesenhada
 
 ### Médio
 
 - Preserva duplas, trincas e jogos de cinco cartas.
-- Avalia quantas jogadas ainda precisa para terminar.
-- Economiza Ás e 2 quando não há perigo imediato.
-- Fica mais agressivo quando um adversário está perto de bater.
-- Prioriza reduzir as cartas na jogada final.
+- Evita desmontar combinações para baixar uma carta isolada.
+- Economiza Ás e 2 quando não existe perigo imediato.
+- Procura reduzir o número de turnos necessários para terminar.
 
 ### Difícil
 
-- Usa planejamento por combinações da mão restante.
-- Estima o menor número de turnos para terminar.
-- Analisa as cartas já jogadas para valorizar cartas de controle.
-- Pode passar estrategicamente para não destruir uma mão forte.
-- Ajusta a agressividade conforme a pontuação e o risco dos adversários.
-- Escolhe entre decisões equivalentes para não ficar previsível.
+- Analisa a organização exata da mão restante.
+- Compara diferentes rotas para terminar em menos jogadas.
+- Considera a quantidade de cartas de cada adversário.
+- Evita abrir o mesmo tipo de jogo que permitiria ao próximo jogador bater.
+- Pode passar quando gastar uma combinação forte seria pior que preservar a mão.
 
-A inteligência usa apenas informações públicas sobre os adversários: quantidade de cartas, jogadas e passes. O bot não consulta as cartas escondidas dos outros jogadores.
+### Especialista
+
+- Usa todas as regras dos níveis anteriores.
+- Simula distribuições possíveis das cartas desconhecidas sem consultar as mãos reais.
+- Estima a chance de cada combinação manter o controle da mesa.
+- Quando alguém está com poucas cartas, usa jogadas maiores e mais fortes para bloquear.
+- Na jogada que bate e nas últimas jogadas da rodada, prioriza combinações fortes para impedir que os adversários descartem cartas.
+- Considera a pontuação acumulada e joga de forma mais agressiva próximo dos 31 pontos.
+
+Os bots utilizam somente as próprias cartas e informações públicas: cartas já jogadas, quantidade de cartas, pontuação e ordem dos jogadores. Eles não enxergam as cartas escondidas dos adversários.
+
+## Regras principais
+
+- Ordem das cartas: 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A e 2.
+- Ordem dos naipes para cartas, duplas e desempates aplicáveis: Ouros, Copas, Espadas e Paus.
+- Jogos de cinco cartas: Sequência, Flush, Full House, Quadra + carta e Sequência do mesmo naipe.
+- O Flush é avaliado somente pela maior carta; o naipe não altera seu valor.
+- O anfitrião escolhe 30 ou 60 segundos por jogada.
+- No modo por pontos, cada carta restante vale um ponto.
+- Os totais são conferidos a cada bloco de quatro rodadas; se ninguém atingir 31, outro bloco começa mantendo os pontos.
 
 ## Atualização no GitHub
 
@@ -41,7 +58,7 @@ README.md
 .gitignore
 ```
 
-Depois faça um commit na branch `main`. O Render deverá publicar automaticamente.
+Depois faça o commit na branch `main`. O Render deverá publicar automaticamente.
 
 ## Render
 
@@ -57,25 +74,22 @@ Start Command:
 node server.js
 ```
 
-Variável:
+Variável de ambiente:
 
 ```text
 NODE_VERSION=24.17.0
 ```
 
-## Relógio por jogada
+## Teste do servidor
 
-Antes de iniciar, o anfitrião escolhe **30 ou 60 segundos** para cada jogada. O contador é controlado pelo servidor e aparece para todos os jogadores.
+```text
+/health
+```
 
-- Com uma jogada na mesa, o fim do tempo gera um passe automático.
-- Com a mesa livre, o sistema baixa automaticamente a combinação válida mais econômica para evitar que a partida fique travada.
-- Se alguém desconectar, a partida e o relógio ficam pausados; ao reconectar, o jogador recebe um novo tempo completo.
-- Os últimos 10 segundos aparecem em alerta, e os últimos 5 segundos ficam destacados em vermelho.
+Resultado esperado:
 
+```json
+{"ok":true,"version":"2.6.0"}
+```
 
-## Novidades da versão 2.5
-
-- Nível de bot **Especialista**, com análise da estrutura da mão e risco dos adversários.
-- Flush comparado primeiro pelo naipe e depois pela maior carta.
-- A dica destaca as cartas temporariamente e depois as abaixa.
-- Todos os jogadores humanos podem confirmar a próxima rodada ou revanche; ela começa quando todos estiverem prontos.
+- Organização visual da mão por números ou por naipes.
