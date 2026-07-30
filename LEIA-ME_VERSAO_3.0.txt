@@ -1,0 +1,65 @@
+PÔQUER CHINÊS ONLINE — VERSÃO 3.0
+==================================
+
+TODOS OS BOTS FORAM CORRIGIDOS
+-------------------------------
+
+MÉDIO
+- Planeja a mão restante.
+- Preserva duplas, trincas e jogos de cinco cartas.
+- Descarta cartas baixas e isoladas.
+- Não passa aleatoriamente quando possui uma jogada legal.
+- Reage quando um adversário está perto de bater.
+
+DIFÍCIL
+- Calcula a melhor divisão completa da mão.
+- Compara jogar e passar usando a estrutura que ficará.
+- Só passa quando isso realmente preserva um plano superior.
+- Nunca passa estrategicamente quando alguém está com até duas cartas.
+- Não escolhe mais aleatoriamente entre jogadas quase empatadas.
+
+ESPECIALISTA
+- Usa o planejamento completo do nível Difícil.
+- Conta as cartas públicas.
+- Simula distribuições possíveis das cartas desconhecidas.
+- Estima a chance de manter o controle da mesa.
+- Não lê nem utiliza as cartas escondidas dos adversários.
+
+TODOS OS NÍVEIS
+- Respeitam a obrigação do 3 de Ouros.
+- Recusam J-Q-K-A-2 como sequência.
+- Comparam Flush por naipe e depois pela maior carta.
+- Jogam agressivamente na fase final da batida.
+- Consideram a pontuação no modo de 31 pontos.
+- Funcionam em “Jogar contra 3 bots”, “+1 Bot” e “Completar com bots”.
+
+ATUALIZAR NO GITHUB
+-------------------
+1. Extraia este ZIP.
+2. Abra o repositório poker-chines-online.
+3. Clique em Add file → Upload files.
+4. Arraste todo o conteúdo extraído.
+5. Não envie o ZIP.
+6. Em Commit message, escreva:
+   Corrigir todos os níveis dos bots
+7. Selecione Commit directly to the main branch.
+8. Clique em Commit changes.
+
+RENDER
+------
+O deploy deve começar automaticamente.
+
+Caso não comece:
+Manual Deploy → Deploy latest commit
+
+Depois que o serviço ficar Live:
+1. Abra o jogo.
+2. Pressione Ctrl + F5.
+3. Teste separadamente os níveis Médio, Difícil e Especialista.
+
+TESTE DA VERSÃO
+---------------
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true,"version":"3.0.0"}

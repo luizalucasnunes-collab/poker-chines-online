@@ -1,4 +1,13 @@
-# Pôquer Chinês Online v2.8
+# Pôquer Chinês Online v3.0
+
+## Bots revisados
+
+- **Médio:** usa planejamento da mão, preserva combinações e sempre joga a melhor opção legal em vez de passar aleatoriamente.
+- **Difícil:** calcula a melhor divisão completa da mão e só passa quando preservar a estrutura é realmente superior.
+- **Especialista:** acrescenta contagem de cartas públicas e simulações das distribuições possíveis, sem enxergar mãos escondidas.
+- Todos os níveis respeitam o 3♦ inicial, J–Q–K–A–2 proibida, Flush por naipe, batida, relógio e pontuação.
+
+- Bot Especialista refeito com planejamento exato da mão, decisão estratégica de passe e estimativa pública de controle da mesa.
 
 - Organização pessoal da mão por número ou por naipe, com preferência salva no navegador.
 Jogo multiplayer online para quatro jogadores, com salas públicas ou privadas, bots inteligentes, relógio por jogada, pontuação por blocos e chat dentro da sala.

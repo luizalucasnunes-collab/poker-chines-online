@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "2.8.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Pôquer Chinês online com bots inteligentes, relógio, revanche coletiva, chat e organização da mão por número ou naipe.",
+  "description": "Pôquer Chinês online com bots Médio, Difícil e Especialista corrigidos, chat, relógio, revanche e organização da mão.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

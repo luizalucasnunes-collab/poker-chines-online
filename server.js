@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "2.8.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "3.0.0" }));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -427,6 +427,8 @@ function beginTurn(room, playerId) {
 }
 
 function chooseTimeoutPlay(room, player) {
+  if (player.isBot) return chooseBotPlay(room, player);
+
   const legal = legalPlays(room, player);
   if (!legal.length) return null;
 
@@ -764,6 +766,7 @@ function buildBotAnalysisContext(hand) {
   const masksByCardIndex = Array.from({ length: cards.length }, () => []);
   const fiveMasks = [];
   const allPlayMasks = [];
+  const playByMask = new Map();
   const participation = new Map(cards.map(card => [card.id, 0]));
 
   for (const size of [1, 2, 3, 5]) {
@@ -772,7 +775,14 @@ function buildBotAnalysisContext(hand) {
       const combo = analyze(subset);
       if (!combo.valid) continue;
       const mask = subset.reduce((value, card) => value | idToBit.get(card.id), 0);
-      allPlayMasks.push({ mask, count: size, strength: combo.strength });
+      const option = {
+        mask,
+        count: size,
+        strength: combo.strength,
+        comboType: combo.type
+      };
+      allPlayMasks.push(option);
+      playByMask.set(mask, option);
       subset.forEach(card => {
         const index = Math.log2(idToBit.get(card.id));
         masksByCardIndex[index].push(mask);
@@ -799,7 +809,70 @@ function buildBotAnalysisContext(hand) {
     return best;
   }
 
-  return { cards, idToBit, fullMask, fiveMasks, allPlayMasks, participation, minTurns };
+  const emptyPlan = Object.freeze({
+    turns: 0,
+    singles: 0,
+    pairs: 0,
+    triples: 0,
+    fives: 0,
+    largestPlay: 0
+  });
+  const bestPlanMemo = new Map([[0, emptyPlan]]);
+
+  function planIsBetter(candidate, current) {
+    if (!current) return true;
+    if (candidate.turns !== current.turns) return candidate.turns < current.turns;
+    if (candidate.singles !== current.singles) return candidate.singles < current.singles;
+    if (candidate.fives !== current.fives) return candidate.fives > current.fives;
+    if (candidate.triples !== current.triples) return candidate.triples > current.triples;
+    if (candidate.pairs !== current.pairs) return candidate.pairs > current.pairs;
+    return candidate.largestPlay > current.largestPlay;
+  }
+
+  function bestPlan(mask) {
+    if (bestPlanMemo.has(mask)) return bestPlanMemo.get(mask);
+    const firstBit = mask & -mask;
+    const firstIndex = Math.log2(firstBit);
+    let best = null;
+
+    for (const playMask of masksByCardIndex[firstIndex]) {
+      if ((playMask & mask) !== playMask) continue;
+      const option = playByMask.get(playMask);
+      const child = bestPlan(mask ^ playMask);
+      const candidate = {
+        turns: child.turns + 1,
+        singles: child.singles + (option.count === 1 ? 1 : 0),
+        pairs: child.pairs + (option.count === 2 ? 1 : 0),
+        triples: child.triples + (option.count === 3 ? 1 : 0),
+        fives: child.fives + (option.count === 5 ? 1 : 0),
+        largestPlay: Math.max(child.largestPlay, option.count)
+      };
+      if (planIsBetter(candidate, best)) best = candidate;
+    }
+
+    const resolved = best || {
+      turns: bitCount(mask),
+      singles: bitCount(mask),
+      pairs: 0,
+      triples: 0,
+      fives: 0,
+      largestPlay: 1
+    };
+    bestPlanMemo.set(mask, resolved);
+    return resolved;
+  }
+
+  return {
+    cards,
+    idToBit,
+    fullMask,
+    fiveMasks,
+    allPlayMasks,
+    playByMask,
+    participation,
+    minTurns,
+    bestPlan
+  };
 }
 
 function cardsMask(context, cards) {
@@ -1008,34 +1081,430 @@ function evaluateBotPlay(room, player, play, context, difficulty) {
   return score;
 }
 
+
+function playerOrderAfter(room, playerId) {
+  const index = room.players.findIndex(item => item.id === playerId);
+  const ordered = [];
+  for (let offset = 1; offset < room.players.length; offset++) {
+    ordered.push(room.players[(index + offset) % room.players.length]);
+  }
+  return ordered;
+}
+
+function seededGenerator(seedText) {
+  let seed = 2166136261;
+  for (const character of String(seedText)) {
+    seed ^= character.charCodeAt(0);
+    seed = Math.imul(seed, 16777619);
+  }
+  seed >>>= 0;
+  return () => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return (seed >>> 0) / 4294967296;
+  };
+}
+
+function shuffledCopyWithRandom(values, random) {
+  const output = [...values];
+  for (let index = output.length - 1; index > 0; index--) {
+    const target = Math.floor(random() * (index + 1));
+    [output[index], output[target]] = [output[target], output[index]];
+  }
+  return output;
+}
+
+function sampledHandCanBeat(hand, targetCombo) {
+  const count = targetCombo.count;
+  if (hand.length < count) return false;
+
+  if (count === 1) {
+    return hand.some(card => beats(analyze([card]), targetCombo));
+  }
+
+  if (count === 2 || count === 3) {
+    const ranks = new Map();
+    for (const card of hand) {
+      if (!ranks.has(card.rank)) ranks.set(card.rank, []);
+      ranks.get(card.rank).push(card);
+    }
+    for (const sameRankCards of ranks.values()) {
+      if (sameRankCards.length < count) continue;
+      const selected = [...sameRankCards]
+        .sort((a, b) => b.suit - a.suit)
+        .slice(0, count);
+      if (beats(analyze(selected), targetCombo)) return true;
+    }
+    return false;
+  }
+
+  for (const cards of combinations(hand, 5)) {
+    const combo = analyze(cards);
+    if (combo.valid && beats(combo, targetCombo)) return true;
+  }
+  return false;
+}
+
+function estimateExpertHoldProbability(room, player, play, sampleCount) {
+  const knownIds = new Set([
+    ...player.hand.map(card => card.id),
+    ...(room.playedCards || []).map(card => card.id)
+  ]);
+  const unknownCards = makeDeck().filter(card => !knownIds.has(card.id));
+  const opponents = playerOrderAfter(room, player.id);
+  const expectedUnknown = opponents.reduce((total, opponent) => total + opponent.hand.length, 0);
+  if (unknownCards.length !== expectedUnknown || opponents.length === 0) return 0.5;
+
+  const playKey = play.cards.map(card => card.id).sort((a, b) => a - b).join('-');
+  const random = seededGenerator(`${room.code}|${room.roundNumber}|${room.turnSerial}|${player.id}|${playKey}`);
+  let holds = 0;
+
+  for (let sample = 0; sample < sampleCount; sample++) {
+    const shuffled = shuffledCopyWithRandom(unknownCards, random);
+    let cursor = 0;
+    let beaten = false;
+
+    for (const opponent of opponents) {
+      const sampledHand = shuffled.slice(cursor, cursor + opponent.hand.length);
+      cursor += opponent.hand.length;
+      if (sampledHandCanBeat(sampledHand, play.combo)) {
+        beaten = true;
+        break;
+      }
+    }
+
+    if (!beaten) holds += 1;
+  }
+
+  return holds / sampleCount;
+}
+
+function isolatedCardPenalty(hand, context) {
+  const rankCounts = new Map();
+  hand.forEach(card => rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1));
+  let penalty = 0;
+  for (const card of hand) {
+    if (rankCounts.get(card.rank) !== 1) continue;
+    const fiveParticipation = context.participation.get(card.id) || 0;
+    if (fiveParticipation === 0) penalty += card.rank <= 5 ? 14 : 7;
+  }
+  return penalty;
+}
+
+function highCardUseCost(cards, danger) {
+  let cost = 0;
+  for (const card of cards) {
+    if (card.rank === 12) cost += danger >= 2 ? 80 : 1450;
+    else if (card.rank === 11) cost += danger >= 2 ? 30 : 520;
+    else if (card.rank === 10) cost += danger >= 2 ? 10 : 140;
+  }
+  return cost;
+}
+
+function lowCardDisposalBonus(cards) {
+  return cards.reduce((total, card) => {
+    if (card.rank <= 5) return total + (6 - card.rank) * 75;
+    return total;
+  }, 0);
+}
+
+const BOT_AI_PROFILES = Object.freeze({
+  medium: Object.freeze({
+    turnWeight: 6200,
+    singlePenalty: 560,
+    fiveBonus: 390,
+    tripleBonus: 210,
+    pairBonus: 105,
+    cardsPlayedBonus: 520,
+    structureWeight: 9,
+    brokenWeight: 17,
+    controlWeight: 8,
+    isolatedWeight: 15,
+    highCardWeight: 0.48,
+    lowCardWeight: 0.48,
+    openingPowerCost: 7,
+    safeResponsePowerCost: 31,
+    dangerResponsePowerBonus: 16,
+    canPassStrategically: false,
+    simulationSamples: 0
+  }),
+  hard: Object.freeze({
+    turnWeight: 8600,
+    singlePenalty: 830,
+    fiveBonus: 610,
+    tripleBonus: 315,
+    pairBonus: 155,
+    cardsPlayedBonus: 700,
+    structureWeight: 13,
+    brokenWeight: 24,
+    controlWeight: 13,
+    isolatedWeight: 23,
+    highCardWeight: 0.72,
+    lowCardWeight: 0.67,
+    openingPowerCost: 12,
+    safeResponsePowerCost: 48,
+    dangerResponsePowerBonus: 31,
+    canPassStrategically: true,
+    simulationSamples: 0
+  }),
+  expert: Object.freeze({
+    turnWeight: 11200,
+    singlePenalty: 1180,
+    fiveBonus: 760,
+    tripleBonus: 390,
+    pairBonus: 190,
+    cardsPlayedBonus: 860,
+    structureWeight: 17,
+    brokenWeight: 30,
+    controlWeight: 19,
+    isolatedWeight: 34,
+    highCardWeight: 1,
+    lowCardWeight: 1,
+    openingPowerCost: 23,
+    safeResponsePowerCost: 78,
+    dangerResponsePowerBonus: 56,
+    canPassStrategically: true,
+    simulationSamples: 12
+  })
+});
+
+function botPlanStateScore(room, player, hand, mask, context, profile) {
+  const plan = context.bestPlan(mask);
+  const structure = handStructureScore(hand, context, mask);
+  const control = remainingControlScore(room, player, hand);
+
+  let score = 0;
+  score -= plan.turns * profile.turnWeight;
+  score -= plan.singles * profile.singlePenalty;
+  score += plan.fives * profile.fiveBonus;
+  score += plan.triples * profile.tripleBonus;
+  score += plan.pairs * profile.pairBonus;
+  score += structure * profile.structureWeight;
+  score += control * profile.controlWeight;
+  score -= isolatedCardPenalty(hand, context) * profile.isolatedWeight;
+
+  return { score, plan, structure, control };
+}
+
+function botCandidateMetrics(room, player, play, context, difficulty) {
+  const profile = BOT_AI_PROFILES[difficulty] || BOT_AI_PROFILES.medium;
+  const playedMask = cardsMask(context, play.cards);
+  const remainingMask = context.fullMask ^ playedMask;
+  const remainingHand = cardsFromMask(context, remainingMask);
+  const state = botPlanStateScore(room, player, remainingHand, remainingMask, context, profile);
+  const danger = publicDangerLevel(room, player);
+  const broken = brokenCombinationPenalty(
+    player.hand,
+    play.cards,
+    remainingHand,
+    play.combo,
+    context
+  );
+  const power = comboPowerCost(play.combo);
+  const finishes = remainingHand.length === 0;
+  const opening = !room.lastPlay;
+  const opponents = room.players.filter(item => item.id !== player.id);
+  const nearestOpponent = opponents.length
+    ? Math.min(...opponents.map(item => item.hand.length))
+    : 13;
+
+  let score = state.score;
+  score += play.cards.length * profile.cardsPlayedBonus;
+  score -= broken * profile.brokenWeight;
+  score -= highCardUseCost(play.cards, danger) * profile.highCardWeight;
+  score += lowCardDisposalBonus(play.cards) * profile.lowCardWeight;
+
+  if (finishes) score += 1_000_000;
+
+  // Depois de uma batida, não existe motivo para economizar cartas.
+  if (room.closingPhase) {
+    score += play.cards.length * 24_000;
+    score -= remainingHand.length * 10_000;
+    score -= state.plan.turns * 5_000;
+    return {
+      play,
+      score,
+      remainingMask,
+      remainingHand,
+      plan: state.plan,
+      broken,
+      holdProbability: 0
+    };
+  }
+
+  if (state.plan.turns === 1 && remainingHand.length > 0) {
+    score += difficulty === "medium" ? 5_000 : difficulty === "hard" ? 8_000 : 11_000;
+  } else if (state.plan.turns === 2 && remainingHand.length > 0) {
+    score += difficulty === "medium" ? 1_000 : difficulty === "hard" ? 2_000 : 3_000;
+  }
+
+  if (opening) {
+    // Em mesa livre, elimina cartas baixas sem gastar combinações dominantes.
+    score += play.cards.length * (difficulty === "medium" ? 230 : difficulty === "hard" ? 330 : 420);
+    if (danger === 0) score -= power * profile.openingPowerCost;
+
+    // Não entrega ao adversário exatamente o tipo de jogo com que ele pode bater.
+    for (const opponent of opponents) {
+      if (opponent.hand.length <= 5 && play.combo.count === opponent.hand.length) {
+        score -= (7 - opponent.hand.length) *
+          (difficulty === "medium" ? 750 : difficulty === "hard" ? 1450 : 2400);
+      }
+    }
+
+    if (nearestOpponent <= 2 && play.combo.count !== nearestOpponent) {
+      score += difficulty === "medium" ? 900 : difficulty === "hard" ? 1600 : 2300;
+    }
+  } else if (danger === 0) {
+    // Sem perigo imediato, usa a menor força que preserve a mão.
+    score -= power * profile.safeResponsePowerCost;
+  } else {
+    // Com adversário perto de bater, aumenta a chance de manter o controle.
+    score += power * profile.dangerResponsePowerBonus * danger;
+  }
+
+  if (danger >= 1) {
+    score += play.cards.length * danger *
+      (difficulty === "medium" ? 420 : difficulty === "hard" ? 690 : 920);
+    score -= state.plan.turns * danger *
+      (difficulty === "medium" ? 540 : difficulty === "hard" ? 900 : 1250);
+  }
+
+  if (room.mode === "points") {
+    const scorePressure = Math.max(0, player.score - 18);
+    score += play.cards.length * scorePressure *
+      (difficulty === "medium" ? 34 : difficulty === "hard" ? 62 : 95);
+    score -= remainingHand.length * scorePressure *
+      (difficulty === "medium" ? 16 : difficulty === "hard" ? 30 : 45);
+  }
+
+  return {
+    play,
+    score,
+    remainingMask,
+    remainingHand,
+    plan: state.plan,
+    broken,
+    holdProbability: 0
+  };
+}
+
+function botPassScore(room, player, context, difficulty) {
+  const profile = BOT_AI_PROFILES[difficulty] || BOT_AI_PROFILES.medium;
+  const current = botPlanStateScore(room, player, player.hand, context.fullMask, context, profile);
+  const danger = publicDangerLevel(room, player);
+  const nextPlayer = roomPlayer(room, nextPlayerId(room, player.id));
+  const tableOwner = room.lastPlay ? roomPlayer(room, room.lastPlay.playerId) : null;
+
+  let score = current.score;
+
+  // Passar pode preservar a mão, mas deve ser raro e nunca ocorrer em perigo real.
+  if (danger === 0) {
+    score += difficulty === "hard" ? 900 : 1200;
+  } else if (danger === 1) {
+    score -= difficulty === "hard" ? 4_500 : 6_000;
+  } else if (danger === 2) {
+    score -= 22_000;
+  } else {
+    score -= 42_000;
+  }
+
+  if (nextPlayer && nextPlayer.hand.length <= 2) score -= 12_000;
+  if (tableOwner && tableOwner.hand.length <= 2) score -= 10_000;
+  if (room.mode === "points" && player.score >= 25) score -= 8_000;
+
+  return score;
+}
+
+function sortBotCandidates(candidates, room, danger) {
+  candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.plan.turns !== b.plan.turns) return a.plan.turns - b.plan.turns;
+    if (a.plan.singles !== b.plan.singles) return a.plan.singles - b.plan.singles;
+    if (b.play.cards.length !== a.play.cards.length) {
+      return b.play.cards.length - a.play.cards.length;
+    }
+
+    const strengthComparison = compareTuples(a.play.combo.strength, b.play.combo.strength);
+    // Resposta segura: prefere a menor combinação suficiente.
+    // Perigo alto: prefere a combinação mais forte entre empates estratégicos.
+    if (room.lastPlay && danger >= 2) return -strengthComparison;
+    return strengthComparison;
+  });
+  return candidates;
+}
+
+function chooseStrategicBotPlay(room, player, legal, difficulty) {
+  const profile = BOT_AI_PROFILES[difficulty] || BOT_AI_PROFILES.medium;
+  const context = buildBotAnalysisContext(player.hand);
+  const danger = publicDangerLevel(room, player);
+  const evaluated = sortBotCandidates(
+    legal.map(play => botCandidateMetrics(room, player, play, context, difficulty)),
+    room,
+    danger
+  );
+
+  let shortlist = evaluated;
+
+  // O Especialista testa distribuições possíveis das cartas desconhecidas.
+  if (difficulty === "expert") {
+    const shortlistSize = player.hand.length <= 6 || danger >= 2 ? 10 : 7;
+    shortlist = evaluated.slice(0, shortlistSize);
+    const samples = danger >= 2
+      ? 18
+      : player.hand.length <= 6
+        ? 15
+        : profile.simulationSamples;
+
+    for (const candidate of shortlist) {
+      if (candidate.remainingHand.length === 0 || room.closingPhase) continue;
+      candidate.holdProbability = estimateExpertHoldProbability(
+        room,
+        player,
+        candidate.play,
+        samples
+      );
+      const oneTurnFinish = candidate.plan.turns === 1;
+      const holdWeight = oneTurnFinish
+        ? 10_000
+        : player.hand.length <= 6
+          ? 5_800
+          : 2_100;
+      candidate.score += candidate.holdProbability * (holdWeight + danger * 3_500);
+    }
+
+    sortBotCandidates(shortlist, room, danger);
+  }
+
+  const chosen = shortlist[0] || evaluated[0];
+  if (!chosen) return null;
+
+  // Mesa livre, batida ou possibilidade de terminar: sempre joga.
+  if (
+    room.closingPhase ||
+    !room.lastPlay ||
+    chosen.remainingHand.length === 0 ||
+    chosen.play.cards.length === player.hand.length
+  ) {
+    return chosen.play;
+  }
+
+  // O Médio nunca dá um passe estratégico: ele joga a melhor opção legal.
+  if (!profile.canPassStrategically) return chosen.play;
+
+  // Difícil e Especialista jamais passam quando alguém está com até duas cartas.
+  if (danger >= 2) return chosen.play;
+
+  const passScore = botPassScore(room, player, context, difficulty);
+  return chosen.score >= passScore ? chosen.play : null;
+}
+
 function chooseBotPlay(room, player) {
   const legal = legalPlays(room, player);
   if (!legal.length) return null;
 
   const difficulty = normalizeBotDifficulty(player.difficulty || room.botDifficulty);
-  const context = buildBotAnalysisContext(player.hand);
-  const evaluated = legal.map(play => ({
-    ...play,
-    aiScore: evaluateBotPlay(room, player, play, context, difficulty)
-  }));
-
-  evaluated.sort((a, b) => {
-    if (b.aiScore !== a.aiScore) return b.aiScore - a.aiScore;
-    return compareTuples(a.combo.strength, b.combo.strength);
-  });
-
-  const best = evaluated[0];
-  let chosen = best;
-  if (difficulty === "hard") {
-    const nearBest = evaluated.filter(item => item.aiScore >= best.aiScore - 5).slice(0, 3);
-    if (nearBest.length > 1) chosen = nearBest[crypto.randomInt(0, nearBest.length)];
-  }
-
-  if (room.closingPhase || !room.lastPlay || chosen.cards.length === player.hand.length) return chosen;
-
-  const danger = publicDangerLevel(room, player);
-  const passThreshold = danger >= 2 ? -1000 : difficulty === "expert" ? -12 : difficulty === "hard" ? -28 : -42;
-  return chosen.aiScore < passThreshold ? null : chosen;
+  return chooseStrategicBotPlay(room, player, legal, difficulty);
 }
 
 function clearBotTimer(code) {
@@ -1493,5 +1962,5 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v2.8 rodando na porta ${PORT}`);
+  console.log(`Pôquer Chinês Online v3.0 rodando na porta ${PORT}`);
 });

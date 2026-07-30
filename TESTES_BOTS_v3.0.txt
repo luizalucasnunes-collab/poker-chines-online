@@ -1,0 +1,32 @@
+PÔQUER CHINÊS ONLINE v3.0 — TESTES DOS BOTS
+============================================
+
+Validações executadas:
+
+1. Médio, Difícil e Especialista fazem uma jogada legal quando um adversário
+   está com uma carta e existe resposta possível.
+
+2. O Médio preserva uma dupla quando possui uma carta isolada suficiente
+   para responder à mesa.
+
+3. O Difícil preserva uma trinca quando possui uma carta isolada suficiente.
+
+4. Todos os níveis reconhecem um plano de duas jogadas na abertura:
+   sequência de cinco cartas seguida de uma dupla.
+
+5. Na primeira jogada, todos incluem obrigatoriamente o 3 de Ouros.
+
+6. Todos encerram a mão imediatamente quando todas as cartas formam uma
+   resposta legal.
+
+7. J-Q-K-A-2 continua proibida como sequência.
+
+8. J-Q-K-A-2 do mesmo naipe continua sendo apenas Flush.
+
+9. Foram testadas mãos aleatórias nos três níveis para confirmar que toda
+   escolha retornada pertence à lista de jogadas legais.
+
+10. O Médio não passa quando existe uma resposta legal.
+
+Resultado:
+TODOS OS TESTES COMPORTAMENTAIS PASSARAM.
