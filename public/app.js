@@ -21,6 +21,7 @@ let chatMessages = [];
 let chatOpen = false;
 let chatUnread = 0;
 let activeChatRoomCode = null;
+let handSortMode = localStorage.getItem("pokerChinesHandSort") === "suit" ? "suit" : "rank";
 
 const $ = id => document.getElementById(id);
 const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
@@ -525,6 +526,42 @@ function cardHtml(card) {
   </button>`;
 }
 
+function sortedPlayerHand(cards) {
+  const ordered = [...cards];
+  if (handSortMode === "suit") {
+    return ordered.sort((a, b) => a.suit - b.suit || a.rank - b.rank || a.id - b.id);
+  }
+  return ordered.sort((a, b) => a.rank - b.rank || a.suit - b.suit || a.id - b.id);
+}
+
+function syncHandSortButtons() {
+  const byRank = handSortMode === "rank";
+  const rankButton = $("sortByRankBtn");
+  const suitButton = $("sortBySuitBtn");
+  if (!rankButton || !suitButton) return;
+
+  rankButton.classList.toggle("active", byRank);
+  suitButton.classList.toggle("active", !byRank);
+  rankButton.setAttribute("aria-pressed", String(byRank));
+  suitButton.setAttribute("aria-pressed", String(!byRank));
+}
+
+function setHandSortMode(mode) {
+  const nextMode = mode === "suit" ? "suit" : "rank";
+  if (handSortMode === nextMode) {
+    syncHandSortButtons();
+    return;
+  }
+
+  handSortMode = nextMode;
+  localStorage.setItem("pokerChinesHandSort", handSortMode);
+  syncHandSortButtons();
+
+  if (state && ["playing", "round_finished", "block_finished", "finished"].includes(state.status)) {
+    renderGame();
+  }
+}
+
 function miniDeck(count) {
   return `<div class="mini-deck">${Array.from({ length: Math.min(count, 13) }, () => '<span class="card-back"></span>').join("")}</div>`;
 }
@@ -668,7 +705,8 @@ function renderGame() {
   const currentCardIds = new Set(state.me.hand.map(card => card.id));
   selectedIds = new Set([...selectedIds].filter(id => currentCardIds.has(id)));
   hintedIds = new Set([...hintedIds].filter(id => currentCardIds.has(id)));
-  $("hand").innerHTML = state.me.hand.map(cardHtml).join("");
+  $("hand").innerHTML = sortedPlayerHand(state.me.hand).map(cardHtml).join("");
+  syncHandSortButtons();
   $("hand").classList.toggle("disabled", !myTurn);
   $("hand").querySelectorAll(".card").forEach(element => {
     const id = Number(element.dataset.cardId);
@@ -902,6 +940,8 @@ $("playSurface").addEventListener("keydown", event => {
 });
 $("passBtn").addEventListener("click", passTurn);
 $("hintBtn").addEventListener("click", giveHint);
+$("sortByRankBtn").addEventListener("click", () => setHandSortMode("rank"));
+$("sortBySuitBtn").addEventListener("click", () => setHandSortMode("suit"));
 $("chatToggleBtn").addEventListener("click", () => setChatOpen(!chatOpen));
 $("closeChatBtn").addEventListener("click", () => setChatOpen(false));
 $("chatForm").addEventListener("submit", sendChatMessage);
@@ -950,3 +990,4 @@ if (savedTurnDuration === "30" || savedTurnDuration === "60") {
 renderDirectory();
 renderChat();
 syncChatBadge();
+syncHandSortButtons();

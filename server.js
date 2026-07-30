@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "2.7.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "2.8.0" }));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -1493,5 +1493,5 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v2.7 rodando na porta ${PORT}`);
+  console.log(`Pôquer Chinês Online v2.8 rodando na porta ${PORT}`);
 });

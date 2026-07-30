@@ -1,5 +1,6 @@
-# Pôquer Chinês Online v2.7
+# Pôquer Chinês Online v2.8
 
+- Organização pessoal da mão por número ou por naipe, com preferência salva no navegador.
 Jogo multiplayer online para quatro jogadores, com salas públicas ou privadas, bots inteligentes, relógio por jogada, pontuação por blocos e chat dentro da sala.
 
 ## Chat da sala

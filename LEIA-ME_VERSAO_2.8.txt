@@ -1,0 +1,49 @@
+PÔQUER CHINÊS ONLINE — VERSÃO 2.8
+==================================
+
+CORREÇÃO
+--------
+Os botões de organização da mão foram restaurados:
+
+- “123 Número”: ordena primeiro pelo valor da carta e depois pelo naipe.
+- “♠ Naipe”: agrupa primeiro por naipe e ordena os valores dentro de cada naipe.
+
+A organização é individual e ocorre somente no navegador do jogador.
+Ela não altera:
+- a mão armazenada no servidor;
+- as cartas selecionadas;
+- as cartas destacadas pela dica;
+- a ordem vista pelos demais jogadores.
+
+A preferência fica salva no navegador.
+
+ATUALIZAR O GITHUB
+-------------------
+1. Extraia este ZIP.
+2. Abra o repositório poker-chines-online.
+3. Clique em Add file → Upload files.
+4. Arraste todo o conteúdo extraído.
+5. Em Commit message, escreva:
+   Restaurar organização das cartas por número e naipe
+6. Selecione Commit directly to the main branch.
+7. Clique em Commit changes.
+
+RENDER
+------
+O deploy normalmente começa automaticamente.
+
+Caso não comece:
+Manual Deploy → Deploy latest commit
+
+Depois que o serviço ficar Live:
+1. Abra o jogo.
+2. Pressione Ctrl + F5.
+3. Entre em uma partida.
+4. Use “123 Número” ou “♠ Naipe”.
+
+TESTE
+-----
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true,"version":"2.8.0"}

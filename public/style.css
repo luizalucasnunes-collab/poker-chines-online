@@ -716,3 +716,34 @@ select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(241,202,107
     border-radius: 17px;
   }
 }
+
+
+/* Versão 2.8: organização da mão por número ou naipe */
+.action-dock {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.sort-hand-btn {
+  min-width: 104px;
+  border: 1px solid transparent;
+}
+.sort-hand-btn.active {
+  color: #211802;
+  border-color: rgba(255, 244, 190, .75);
+  background: linear-gradient(135deg, var(--gold-dark), #f5dc91);
+  box-shadow: 0 0 0 3px rgba(241, 202, 107, .12), 0 6px 15px rgba(0,0,0,.18);
+}
+@media (max-width: 580px) {
+  .action-dock {
+    gap: 6px;
+    padding: 7px;
+  }
+  .sort-hand-btn {
+    min-width: 0;
+  }
+  .action-dock .btn {
+    flex: 1 1 auto;
+    padding: 9px 9px;
+    font-size: 12px;
+  }
+}
