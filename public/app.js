@@ -17,6 +17,10 @@ let toastTimer = null;
 let directory = { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
 let presenceTimer = null;
 let turnCountdownTimer = null;
+let chatMessages = [];
+let chatOpen = false;
+let chatUnread = 0;
+let activeChatRoomCode = null;
 
 const $ = id => document.getElementById(id);
 const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
@@ -24,6 +28,9 @@ const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
 function showScreen(id) {
   screens.forEach(screenId => $(screenId).classList.toggle("hidden", screenId !== id));
   $("globalHomeBtn").classList.toggle("hidden", id === "homeScreen");
+  const chatAvailable = id !== "homeScreen" && Boolean(state);
+  $("chatToggleBtn").classList.toggle("hidden", !chatAvailable);
+  if (!chatAvailable) setChatOpen(false);
   if (id !== "gameScreen") stopTurnCountdown();
 }
 
@@ -95,6 +102,101 @@ function toast(text, tone = "info") {
   element.className = `toast show ${tone}`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { element.className = "toast"; }, 2800);
+}
+
+function formatChatTime(value) {
+  const date = new Date(Number(value) || Date.now());
+  return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function syncChatBadge() {
+  const badge = $("chatUnreadBadge");
+  const count = Math.max(0, chatUnread);
+  badge.textContent = count > 99 ? "99+" : String(count);
+  badge.classList.toggle("hidden", count === 0);
+  $("chatToggleBtn").setAttribute("aria-label", count > 0 ? `Abrir chat, ${count} mensagem(ns) não lida(s)` : "Abrir chat da sala");
+}
+
+function renderChat() {
+  const container = $("chatMessages");
+  if (!container) return;
+  const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 90;
+  if (!chatMessages.length) {
+    container.innerHTML = '<div class="chat-empty">Nenhuma mensagem ainda.<br>Converse com os jogadores da sala.</div>';
+  } else {
+    container.innerHTML = chatMessages.map(message => {
+      const own = message.playerId === state?.me?.id;
+      return `<div class="chat-message${own ? " own" : ""}">
+        <div class="chat-message-meta"><b>${escapeHtml(message.playerName || "Jogador")}</b><time>${escapeHtml(formatChatTime(message.createdAt))}</time></div>
+        <p>${escapeHtml(message.text || "")}</p>
+      </div>`;
+    }).join("");
+  }
+  if (chatOpen && (wasNearBottom || !container.dataset.rendered)) {
+    requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
+  }
+  container.dataset.rendered = "true";
+  syncChatBadge();
+}
+
+function setChatOpen(open) {
+  chatOpen = Boolean(open && state);
+  $("chatPanel").classList.toggle("hidden", !chatOpen);
+  $("chatToggleBtn").classList.toggle("active", chatOpen);
+  $("chatToggleBtn").setAttribute("aria-expanded", String(chatOpen));
+  if (chatOpen) {
+    chatUnread = 0;
+    renderChat();
+    requestAnimationFrame(() => $("chatInput").focus());
+  }
+  syncChatBadge();
+}
+
+function resetChat() {
+  chatMessages = [];
+  chatUnread = 0;
+  activeChatRoomCode = null;
+  $("chatInput").value = "";
+  $("chatCounter").textContent = "0/280";
+  setChatOpen(false);
+  renderChat();
+}
+
+function loadChatHistory(messages, roomCode) {
+  if (activeChatRoomCode !== roomCode) {
+    activeChatRoomCode = roomCode;
+    chatUnread = 0;
+    chatOpen = false;
+  }
+  chatMessages = Array.isArray(messages) ? messages.slice(-100) : [];
+  renderChat();
+}
+
+function appendChatMessage(message) {
+  if (!message?.id || chatMessages.some(item => item.id === message.id)) return;
+  chatMessages.push(message);
+  if (chatMessages.length > 100) chatMessages.splice(0, chatMessages.length - 100);
+  if (!chatOpen && message.playerId !== state?.me?.id) chatUnread += 1;
+  renderChat();
+}
+
+function sendChatMessage(event) {
+  event?.preventDefault();
+  if (!state) return;
+  const input = $("chatInput");
+  const text = input.value.replace(/\s+/g, " ").trim().slice(0, 280);
+  if (!text) return;
+  $("chatSendBtn").disabled = true;
+  socket.emit("send_chat_message", { text }, result => {
+    $("chatSendBtn").disabled = false;
+    if (!result?.ok) {
+      toast(result?.error || "Não foi possível enviar a mensagem.", "error");
+      return;
+    }
+    input.value = "";
+    $("chatCounter").textContent = "0/280";
+    input.focus();
+  });
 }
 
 function callbackResult(result, onSuccess) {
@@ -217,6 +319,7 @@ function leaveRoom() {
     clearSession();
     state = null;
     selectedIds.clear();
+    resetChat();
     $("winnerModal").classList.add("hidden");
     history.replaceState({}, "", location.pathname);
     showScreen("homeScreen");
@@ -381,7 +484,10 @@ function analyze(cards) {
   if (count !== 5) return { valid: false };
 
   const uniqueRanks = [...new Set(sorted.map(card => card.rank))];
-  const isStraight = uniqueRanks.length === 5 && uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
+  const isForbiddenJqka2 = uniqueRanks.length === 5 &&
+    uniqueRanks.every((rank, index) => rank === 8 + index);
+  const isStraight = !isForbiddenJqka2 && uniqueRanks.length === 5 &&
+    uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
   const isFlush = sorted.every(card => card.suit === sorted[0].suit);
   const counts = new Map();
   sorted.forEach(card => counts.set(card.rank, (counts.get(card.rank) || 0) + 1));
@@ -752,9 +858,11 @@ socket.on("disconnect", () => {
 
 socket.on("room_state", nextState => {
   state = nextState;
+  loadChatHistory(nextState.chatMessages, nextState.code);
   renderState();
 });
 
+socket.on("chat_message", message => appendChatMessage(message));
 socket.on("notice", message => toast(message.text, message.tone));
 socket.on("directory_state", nextDirectory => {
   directory = nextDirectory || { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
@@ -794,6 +902,14 @@ $("playSurface").addEventListener("keydown", event => {
 });
 $("passBtn").addEventListener("click", passTurn);
 $("hintBtn").addEventListener("click", giveHint);
+$("chatToggleBtn").addEventListener("click", () => setChatOpen(!chatOpen));
+$("closeChatBtn").addEventListener("click", () => setChatOpen(false));
+$("chatForm").addEventListener("submit", sendChatMessage);
+$("chatInput").addEventListener("input", event => {
+  const value = event.target.value.slice(0, 280);
+  if (event.target.value !== value) event.target.value = value;
+  $("chatCounter").textContent = `${value.length}/280`;
+});
 $("homeRulesBtn").addEventListener("click", openRules);
 $("lobbyRulesBtn").addEventListener("click", openRules);
 $("gameRulesBtn").addEventListener("click", openRules);
@@ -813,6 +929,7 @@ $("openRooms").addEventListener("click", event => {
 });
 
 document.addEventListener("keydown", event => {
+  if (event.target.closest?.("input, textarea, select, button, [contenteditable='true']")) return;
   if (event.key === "Enter" && state?.status === "playing" && state.currentPlayerId === state.me.id && selectedIds.size > 0) {
     playCards();
   }
@@ -831,3 +948,5 @@ if (savedTurnDuration === "30" || savedTurnDuration === "60") {
   $("turnDurationSelect").value = savedTurnDuration;
 }
 renderDirectory();
+renderChat();
+syncChatBadge();

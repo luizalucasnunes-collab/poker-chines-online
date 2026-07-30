@@ -11,6 +11,28 @@
   <div id="toast" class="toast"></div>
   <button id="globalHomeBtn" class="global-home hidden" aria-label="Voltar ao início">⌂ Início</button>
 
+  <button id="chatToggleBtn" class="chat-toggle hidden" type="button" aria-expanded="false" aria-controls="chatPanel" aria-label="Abrir chat da sala">
+    <span class="chat-toggle-icon">💬</span>
+    <span>Chat</span>
+    <span id="chatUnreadBadge" class="chat-unread hidden">0</span>
+  </button>
+
+  <aside id="chatPanel" class="chat-panel hidden" aria-label="Chat da sala">
+    <header class="chat-header">
+      <div><strong>Chat da sala</strong><small>Somente os jogadores desta mesa</small></div>
+      <button id="closeChatBtn" class="chat-close" type="button" aria-label="Fechar chat">×</button>
+    </header>
+    <div id="chatMessages" class="chat-messages" aria-live="polite" aria-relevant="additions"></div>
+    <form id="chatForm" class="chat-form" autocomplete="off">
+      <label class="sr-only" for="chatInput">Mensagem</label>
+      <input id="chatInput" maxlength="280" placeholder="Escreva uma mensagem..." autocomplete="off">
+      <div class="chat-form-footer">
+        <small id="chatCounter">0/280</small>
+        <button id="chatSendBtn" class="btn primary compact" type="submit">Enviar</button>
+      </div>
+    </form>
+  </aside>
+
   <main>
     <section id="homeScreen" class="screen home-screen">
       <div class="hero">
@@ -211,6 +233,7 @@
         <div><b>Rodada</b><span>Após três passes consecutivos, a mesa é liberada para quem fez a última jogada.</span></div>
         <div><b>Bots inteligentes</b><span>Médio preserva combinações; Difícil planeja jogadas futuras; Especialista analisa a estrutura completa da mão, risco dos adversários e controle da mesa.</span></div>
         <div><b>Tempo por jogada</b><span>O anfitrião escolhe 30 ou 60 segundos. Se o tempo acabar, o jogador passa automaticamente; com a mesa livre, o sistema faz uma jogada válida.</span></div>
+        <div><b>Chat da sala</b><span>Os jogadores humanos podem conversar na sala de espera, durante a partida e entre as rodadas.</span></div>
       </div>
       <p class="rule-note">As sequências vão de 3-4-5-6-7 até 10-J-Q-K-A. A combinação J-Q-K-A-2 é proibida como sequência.</p>
     </div>

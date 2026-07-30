@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "private": true,
-  "description": "Pôquer Chinês online com bots inteligentes, relógio, revanche coletiva e sequência J-Q-K-A-2 proibida.",
+  "description": "Pôquer Chinês online com bots inteligentes, relógio, revanche coletiva, regras completas e chat dentro da sala.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

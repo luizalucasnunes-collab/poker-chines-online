@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "2.6.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "2.7.0" }));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -26,6 +26,8 @@ const rooms = new Map();
 const onlineUsers = new Map();
 const botTimers = new Map();
 const turnTimers = new Map();
+const CHAT_MAX_MESSAGES = 100;
+const CHAT_MAX_LENGTH = 280;
 
 function normalizeName(value) {
   return String(value || "")
@@ -51,6 +53,14 @@ function normalizeBotDifficulty(value) {
 
 function normalizeTurnDuration(value) {
   return Number(value) === 60 ? 60 : 30;
+}
+
+function normalizeChatText(value) {
+  return String(value || "")
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, CHAT_MAX_LENGTH);
 }
 
 function botDifficultyLabel(value) {
@@ -160,7 +170,9 @@ function makeHumanPlayer(name, socket) {
     connected: true,
     isBot: false,
     hand: [],
-    score: 0
+    score: 0,
+    lastChatAt: 0,
+    chatTimestamps: []
   };
 }
 
@@ -348,7 +360,9 @@ function stateFor(room, viewer) {
     roundResults: room.roundResults || [],
     rematchVoteIds: [...(room.rematchVotes || new Set())],
     rematchVoteCount: room.rematchVotes?.size || 0,
-    rematchRequired: room.players.filter(player => !player.isBot).length
+    rematchRequired: room.players.filter(player => !player.isBot).length,
+    chatMessages: Array.isArray(room.chatMessages) ? room.chatMessages.slice(-CHAT_MAX_MESSAGES) : [],
+    chatMaxLength: CHAT_MAX_LENGTH
   };
 }
 
@@ -1125,6 +1139,7 @@ io.on("connection", socket => {
         seriesLoserIds: [],
         roundResults: [],
         rematchVotes: new Set(),
+        chatMessages: [],
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -1334,6 +1349,50 @@ io.on("connection", socket => {
     }
   });
 
+  socket.on("send_chat_message", (payload, callback = () => {}) => {
+    try {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && roomPlayer(room, socket.data.playerId);
+      if (!room || !player) throw new Error("Você não está em uma sala.");
+      if (player.isBot) throw new Error("Bots não podem enviar mensagens.");
+      if (!player.connected || player.socketId !== socket.id) throw new Error("Sua conexão com a sala não está ativa.");
+
+      const text = normalizeChatText(payload?.text);
+      if (!text) throw new Error("Digite uma mensagem.");
+
+      const now = Date.now();
+      player.chatTimestamps = (player.chatTimestamps || []).filter(timestamp => now - timestamp < 10000);
+      if (now - Number(player.lastChatAt || 0) < 500) {
+        throw new Error("Aguarde um instante antes de enviar outra mensagem.");
+      }
+      if (player.chatTimestamps.length >= 8) {
+        throw new Error("Muitas mensagens em pouco tempo. Aguarde alguns segundos.");
+      }
+
+      player.lastChatAt = now;
+      player.chatTimestamps.push(now);
+      const message = {
+        id: crypto.randomUUID(),
+        playerId: player.id,
+        playerName: player.name,
+        text,
+        createdAt: now
+      };
+
+      if (!Array.isArray(room.chatMessages)) room.chatMessages = [];
+      room.chatMessages.push(message);
+      if (room.chatMessages.length > CHAT_MAX_MESSAGES) {
+        room.chatMessages.splice(0, room.chatMessages.length - CHAT_MAX_MESSAGES);
+      }
+      room.updatedAt = now;
+
+      callback({ ok: true, messageId: message.id });
+      io.to(room.code).emit("chat_message", message);
+    } catch (error) {
+      callback({ ok: false, error: error.message || "Não foi possível enviar a mensagem." });
+    }
+  });
+
   socket.on("play_cards", (payload, callback = () => {}) => {
     try {
       const room = rooms.get(socket.data.roomCode);
@@ -1434,5 +1493,5 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v2.6 rodando na porta ${PORT}`);
+  console.log(`Pôquer Chinês Online v2.7 rodando na porta ${PORT}`);
 });
