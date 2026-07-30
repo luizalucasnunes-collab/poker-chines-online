@@ -1,0 +1,42 @@
+PÔQUER CHINÊS ONLINE — VERSÃO 2.6
+==================================
+
+CORREÇÃO DA SEQUÊNCIA
+---------------------
+- J-Q-K-A-2 é proibida como sequência.
+- A maior sequência válida é 10-J-Q-K-A.
+- A regra também é aplicada aos bots, às dicas e às jogadas automáticas.
+- Cinco cartas J-Q-K-A-2 do mesmo naipe continuam formando Flush, pois o Flush
+  é uma combinação independente, mas não formam Sequência do mesmo naipe.
+
+ATUALIZAR O GITHUB
+------------------
+1. Extraia este ZIP.
+2. Abra o repositório poker-chines-online no GitHub.
+3. Clique em Add file > Upload files.
+4. Arraste todo o conteúdo extraído para o GitHub.
+5. Não envie o próprio ZIP.
+6. Em Commit message, escreva:
+   Proibir a sequência J-Q-K-A-2
+7. Selecione Commit directly to the main branch.
+8. Clique em Commit changes.
+
+ATUALIZAR O RENDER
+------------------
+O deploy deve começar automaticamente após o commit.
+
+Caso não inicie:
+Manual Deploy > Deploy latest commit
+
+Se houver erro de cache:
+Manual Deploy > Clear build cache & deploy
+
+TESTE
+-----
+Abra:
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true,"version":"2.6.0"}
+
+Depois pressione Ctrl + F5 na página do jogo.

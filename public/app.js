@@ -17,32 +17,6 @@ let toastTimer = null;
 let directory = { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
 let presenceTimer = null;
 let turnCountdownTimer = null;
-let handSortMode = localStorage.getItem("pokerChinesHandSort") === "suit" ? "suit" : "rank";
-
-function sortHandForDisplay(cards) {
-  const ordered = [...cards];
-  if (handSortMode === "suit") {
-    // Agrupa por naipe: Ouros, Copas, Espadas e Paus.
-    return ordered.sort((a, b) => a.suit - b.suit || a.rank - b.rank);
-  }
-  // Agrupa por valor: 3, 4, 5 ... A e 2; desempate pelo naipe.
-  return ordered.sort((a, b) => a.rank - b.rank || a.suit - b.suit);
-}
-
-function setHandSortMode(mode, showMessage = true) {
-  handSortMode = mode === "suit" ? "suit" : "rank";
-  localStorage.setItem("pokerChinesHandSort", handSortMode);
-  if ($("handSortSelect")) $("handSortSelect").value = handSortMode;
-  if (state?.status === "playing") renderGame();
-  if (showMessage) {
-    toast(
-      handSortMode === "suit"
-        ? "Mão organizada por naipes."
-        : "Mão organizada por números.",
-      "success"
-    );
-  }
-}
 
 const $ = id => document.getElementById(id);
 const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
@@ -427,7 +401,7 @@ function analyze(cards) {
   if (triple && pair) return { valid: true, count, type: "Full House", strength: [2, triple.rank] };
   if (isFlush) {
     const highest = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit)[0];
-    return { valid: true, count, type: "Flush", strength: [1, highest.rank] };
+    return { valid: true, count, type: "Flush", strength: [1, sorted[0].suit, highest.rank] };
   }
   if (isStraight) {
     const high = sorted[sorted.length - 1];
@@ -588,8 +562,7 @@ function renderGame() {
   const currentCardIds = new Set(state.me.hand.map(card => card.id));
   selectedIds = new Set([...selectedIds].filter(id => currentCardIds.has(id)));
   hintedIds = new Set([...hintedIds].filter(id => currentCardIds.has(id)));
-  const displayedHand = sortHandForDisplay(state.me.hand);
-  $("hand").innerHTML = displayedHand.map(cardHtml).join("");
+  $("hand").innerHTML = state.me.hand.map(cardHtml).join("");
   $("hand").classList.toggle("disabled", !myTurn);
   $("hand").querySelectorAll(".card").forEach(element => {
     const id = Number(element.dataset.cardId);
@@ -785,8 +758,7 @@ socket.on("room_state", nextState => {
 socket.on("notice", message => toast(message.text, message.tone));
 socket.on("directory_state", nextDirectory => {
   directory = nextDirectory || { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
-  $("handSortSelect").value = handSortMode;
-renderDirectory();
+  renderDirectory();
 });
 
 $("createRoomBtn").addEventListener("click", createRoom);
@@ -822,9 +794,6 @@ $("playSurface").addEventListener("keydown", event => {
 });
 $("passBtn").addEventListener("click", passTurn);
 $("hintBtn").addEventListener("click", giveHint);
-$("handSortSelect").addEventListener("change", event => {
-  setHandSortMode(event.target.value);
-});
 $("homeRulesBtn").addEventListener("click", openRules);
 $("lobbyRulesBtn").addEventListener("click", openRules);
 $("gameRulesBtn").addEventListener("click", openRules);

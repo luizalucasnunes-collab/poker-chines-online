@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.disable("x-powered-by");
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "2.7.0" }));
+app.get("/health", (_req, res) => res.json({ ok: true, version: "2.6.0" }));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -231,7 +231,9 @@ function analyze(cards) {
   if (count !== 5) return { valid: false };
 
   const uniqueRanks = [...new Set(sorted.map(card => card.rank))];
-  const isStraight = uniqueRanks.length === 5 &&
+  const isForbiddenJqka2 = uniqueRanks.length === 5 &&
+    uniqueRanks.every((rank, index) => rank === 8 + index);
+  const isStraight = !isForbiddenJqka2 && uniqueRanks.length === 5 &&
     uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
   const isFlush = sorted.every(card => card.suit === sorted[0].suit);
 
@@ -258,7 +260,7 @@ function analyze(cards) {
 
   if (isFlush) {
     const highest = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit)[0];
-    return { valid: true, count, type: "Flush", category: 1, strength: [1, highest.rank] };
+    return { valid: true, count, type: "Flush", category: 1, strength: [1, sorted[0].suit, highest.rank] };
   }
 
   if (isStraight) {
@@ -783,40 +785,7 @@ function buildBotAnalysisContext(hand) {
     return best;
   }
 
-  // Entre partições com o mesmo número mínimo de turnos, prefere jogos maiores
-  // e evita deixar muitas cartas isoladas para o final.
-  const planQualityMemo = new Map([[0, 0]]);
-  function planQuality(mask) {
-    if (planQualityMemo.has(mask)) return planQualityMemo.get(mask);
-    const targetTurns = minTurns(mask);
-    const firstBit = mask & -mask;
-    const firstIndex = Math.log2(firstBit);
-    let best = Number.NEGATIVE_INFINITY;
-
-    for (const playMask of masksByCardIndex[firstIndex]) {
-      if ((playMask & mask) !== playMask) continue;
-      const nextMask = mask ^ playMask;
-      if (1 + minTurns(nextMask) !== targetTurns) continue;
-      const size = bitCount(playMask);
-      const playValue = size === 5 ? 46 : size === 3 ? 21 : size === 2 ? 11 : -9;
-      best = Math.max(best, playValue + planQuality(nextMask));
-    }
-
-    if (!Number.isFinite(best)) best = -bitCount(mask) * 9;
-    planQualityMemo.set(mask, best);
-    return best;
-  }
-
-  return {
-    cards,
-    idToBit,
-    fullMask,
-    fiveMasks,
-    allPlayMasks,
-    participation,
-    minTurns,
-    planQuality
-  };
+  return { cards, idToBit, fullMask, fiveMasks, allPlayMasks, participation, minTurns };
 }
 
 function cardsMask(context, cards) {
@@ -898,18 +867,13 @@ function brokenCombinationPenalty(originalHand, playedCards, remainingHand, comb
   return penalty;
 }
 
-function opponentsInTurnOrder(room, player) {
-  const playerIndex = room.players.findIndex(item => item.id === player.id);
-  const ordered = [];
-  for (let offset = 1; offset < room.players.length; offset++) {
-    ordered.push(room.players[(playerIndex + offset) % room.players.length]);
-  }
-  return ordered;
+function comboPowerCost(combo) {
+  if (!combo?.strength) return 0;
+  return combo.strength.reduce((total, value, index) => total + Number(value || 0) * (index === 0 ? 4 : 1), 0);
 }
 
 function publicDangerLevel(room, player) {
-  const opponents = room.players.filter(item => item.id !== player.id && item.hand.length > 0);
-  if (!opponents.length) return 0;
+  const opponents = room.players.filter(item => item.id !== player.id);
   const minimumCards = Math.min(...opponents.map(item => item.hand.length));
   if (minimumCards <= 1) return 3;
   if (minimumCards <= 2) return 2;
@@ -918,183 +882,46 @@ function publicDangerLevel(room, player) {
 }
 
 function remainingControlScore(room, player, remainingHand) {
-  if (!remainingHand.length) return 0;
-  const knownIds = new Set([
-    ...player.hand.map(card => card.id),
-    ...(room.playedCards || []).map(card => card.id)
-  ]);
-  const deck = makeDeck();
+  const playedCards = room.playedCards || [];
+  const higherPlayed = rank => playedCards.filter(card => card.rank > rank).length;
   let score = 0;
-
   for (const card of remainingHand) {
-    const cardStrength = [card.rank, card.suit];
-    const unseenHigher = deck.filter(other =>
-      compareTuples([other.rank, other.suit], cardStrength) > 0 && !knownIds.has(other.id)
-    ).length;
-
-    if (unseenHigher === 0) score += 18;
-    else if (unseenHigher <= 2) score += 11;
-    else if (unseenHigher <= 5) score += 6;
-    else if (card.rank >= 11) score += 3;
+    if (card.rank === 12) score += 10;
+    else if (card.rank === 11) score += 5 + Math.min(3, higherPlayed(card.rank));
+    else if (card.rank === 10) score += 2;
   }
-
   return score;
 }
 
-function multiCardIsolationCount(mask, context) {
-  if (!mask) return 0;
-  let isolated = 0;
-  for (let index = 0; index < context.cards.length; index++) {
-    const bit = 1 << index;
-    if (!(mask & bit)) continue;
-    const hasMultiPlay = context.allPlayMasks.some(option =>
-      option.count > 1 && (option.mask & bit) && (option.mask & mask) === option.mask
-    );
-    if (!hasMultiPlay) isolated += 1;
-  }
-  return isolated;
-}
-
-function remainingHandOptionScore(remainingMask, context) {
-  if (!remainingMask) return 0;
+function expertRemainingHandScore(remainingHand, remainingMask, context) {
+  if (!remainingHand.length) return 0;
   let legalOptions = 0;
   let fiveCardOptions = 0;
-  let largestPlay = 1;
+  let largestNextPlay = 1;
 
   for (const option of context.allPlayMasks) {
     if ((option.mask & remainingMask) !== option.mask) continue;
     legalOptions += 1;
-    largestPlay = Math.max(largestPlay, option.count);
+    largestNextPlay = Math.max(largestNextPlay, option.count);
     if (option.count === 5) fiveCardOptions += 1;
   }
 
-  const isolated = multiCardIsolationCount(remainingMask, context);
-  return Math.min(legalOptions, 50) * 1.1 + Math.min(fiveCardOptions, 12) * 4.5 + largestPlay * 10 - isolated * 7;
+  const rankCounts = new Map();
+  remainingHand.forEach(card => rankCounts.set(card.rank, (rankCounts.get(card.rank) || 0) + 1));
+  const isolatedCards = remainingHand.filter(card =>
+    rankCounts.get(card.rank) === 1 && (context.participation.get(card.id) || 0) === 0
+  ).length;
+
+  return Math.min(legalOptions, 45) * 1.5 + Math.min(fiveCardOptions, 12) * 5 + largestNextPlay * 13 - isolatedCards * 8;
 }
 
-function tableShapeScore(room, player, play) {
-  const opponents = opponentsInTurnOrder(room, player).filter(item => item.hand.length > 0);
-  if (!opponents.length) return 0;
-  const next = opponents[0];
-  let score = 0;
-
-  opponents.forEach((opponent, index) => {
-    const weight = index === 0 ? 1.6 : 1;
-    if (play.combo.count > opponent.hand.length) score += 75 * weight;
-    if (play.combo.count === opponent.hand.length && opponent.hand.length <= 5) score -= 105 * weight;
-  });
-
-  if (next.hand.length <= 3) {
-    if (play.combo.count > next.hand.length) score += 170;
-    if (play.combo.count === next.hand.length) score -= 190;
-  }
-
-  return score;
-}
-
-function comboPowerCost(combo) {
-  if (!combo?.strength) return 0;
-  return combo.strength.reduce((total, value, index) => {
-    const weight = index === 0 ? 6 : index === 1 ? 2 : 1;
-    return total + Number(value || 0) * weight;
-  }, 0);
-}
-
-function canSampledHandBeat(hand, targetCombo) {
-  const count = targetCombo.count;
-  if (hand.length < count) return false;
-
-  if (count === 1) {
-    return hand.some(card => compareTuples([card.rank, card.suit], targetCombo.strength) > 0);
-  }
-
-  const rankGroups = new Map();
-  for (const card of hand) {
-    if (!rankGroups.has(card.rank)) rankGroups.set(card.rank, []);
-    rankGroups.get(card.rank).push(card);
-  }
-
-  if (count === 2) {
-    for (const [rank, cards] of rankGroups.entries()) {
-      if (cards.length < 2) continue;
-      const maxSuit = Math.max(...cards.map(card => card.suit));
-      if (compareTuples([rank, maxSuit], targetCombo.strength) > 0) return true;
-    }
-    return false;
-  }
-
-  if (count === 3) {
-    for (const [rank, cards] of rankGroups.entries()) {
-      if (cards.length >= 3 && compareTuples([rank], targetCombo.strength) > 0) return true;
-    }
-    return false;
-  }
-
-  for (const cards of combinations(hand, 5)) {
-    const combo = analyze(cards);
-    if (combo.valid && beats(combo, targetCombo)) return true;
-  }
-  return false;
-}
-
-function shuffleForSimulation(cards) {
-  const shuffled = [...cards];
-  for (let index = shuffled.length - 1; index > 0; index--) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-  }
-  return shuffled;
-}
-
-function estimatePlayControl(room, player, play, samples) {
-  const opponents = opponentsInTurnOrder(room, player);
-  const activeOpponents = opponents.filter(item => item.hand.length > 0);
-  if (!activeOpponents.length) {
-    return { noOneBeats: 1, nextBeats: 0, criticalBeats: 0 };
-  }
-
-  if (activeOpponents.every(item => item.hand.length < play.combo.count)) {
-    return { noOneBeats: 1, nextBeats: 0, criticalBeats: 0 };
-  }
-
-  const knownIds = new Set([
-    ...player.hand.map(card => card.id),
-    ...(room.playedCards || []).map(card => card.id)
-  ]);
-  const unknownCards = makeDeck().filter(card => !knownIds.has(card.id));
-  const totalRequired = opponents.reduce((total, opponent) => total + opponent.hand.length, 0);
-  if (unknownCards.length !== totalRequired) {
-    return { noOneBeats: 0.5, nextBeats: 0.5, criticalBeats: 0.5 };
-  }
-
-  let noOneBeats = 0;
-  let nextBeats = 0;
-  let criticalBeats = 0;
-
-  for (let sample = 0; sample < samples; sample++) {
-    const pool = shuffleForSimulation(unknownCards);
-    let cursor = 0;
-    let anyBeat = false;
-
-    opponents.forEach((opponent, index) => {
-      const sampledHand = pool.slice(cursor, cursor + opponent.hand.length);
-      cursor += opponent.hand.length;
-      const canBeat = canSampledHandBeat(sampledHand, play.combo);
-      if (canBeat) {
-        anyBeat = true;
-        if (index === 0) nextBeats += 1;
-        if (opponent.hand.length <= 3) criticalBeats += 1;
-      }
-    });
-
-    if (!anyBeat) noOneBeats += 1;
-  }
-
-  return {
-    noOneBeats: noOneBeats / samples,
-    nextBeats: nextBeats / samples,
-    criticalBeats: criticalBeats / samples
-  };
+function expertResponsePressure(room, player, play) {
+  if (!room.lastPlay || room.closingPhase) return 0;
+  const danger = publicDangerLevel(room, player);
+  const power = comboPowerCost(play.combo);
+  const opponentCards = room.players.filter(item => item.id !== player.id).map(item => item.hand.length);
+  const lowOpponentCount = opponentCards.filter(amount => amount <= 3).length;
+  return power * (danger * 1.8 + lowOpponentCount * 0.8);
 }
 
 function evaluateBotPlay(room, player, play, context, difficulty) {
@@ -1102,129 +929,69 @@ function evaluateBotPlay(room, player, play, context, difficulty) {
   const remainingMask = context.fullMask ^ playedMask;
   const remainingHand = cardsFromMask(context, remainingMask);
   const danger = publicDangerLevel(room, player);
+  const remainingTurns = context.minTurns(remainingMask);
+  const structure = handStructureScore(remainingHand, context, remainingMask);
+  const broken = brokenCombinationPenalty(player.hand, play.cards, remainingHand, play.combo, context);
+  const powerCost = comboPowerCost(play.combo);
+  const control = remainingControlScore(room, player, remainingHand);
   const isOpening = !room.lastPlay;
   const finishes = remainingHand.length === 0;
   const finalPhase = room.closingPhase;
+  const nearestOpponent = Math.min(...room.players.filter(item => item.id !== player.id).map(item => item.hand.length));
 
-  const fullTurns = context.minTurns(context.fullMask);
-  const remainingTurns = context.minTurns(remainingMask);
-  const fullPlanQuality = context.planQuality(context.fullMask);
-  const remainingPlanQuality = context.planQuality(remainingMask);
-  const fullStructure = handStructureScore(player.hand, context, context.fullMask);
-  const remainingStructure = handStructureScore(remainingHand, context, remainingMask);
-  const broken = brokenCombinationPenalty(player.hand, play.cards, remainingHand, play.combo, context);
-  const fullControl = remainingControlScore(room, player, player.hand);
-  const remainingControl = remainingControlScore(room, player, remainingHand);
-  const power = comboPowerCost(play.combo);
-  const turnGain = fullTurns - remainingTurns;
-  const nextOpponent = opponentsInTurnOrder(room, player).find(item => item.hand.length > 0);
+  let score = 0;
 
   if (finalPhase) {
-    let finalScore = play.cards.length * 500 - remainingHand.length * 340;
-    finalScore += power * 14;
-    if (finishes) finalScore += 30000;
-    return finalScore;
+    score += play.cards.length * 260;
+    score -= remainingHand.length * 120;
+    score -= remainingTurns * 70;
+    if (finishes) score += 10000;
+    return score;
   }
 
   const isExpert = difficulty === "expert";
-  const isHard = difficulty === "hard" || isExpert;
-  let score = 0;
-
-  score += play.cards.length * (isExpert ? 44 : isHard ? 38 : 32);
-  score += turnGain * (isExpert ? 245 : isHard ? 210 : 170);
-  score += (remainingPlanQuality - fullPlanQuality) * (isExpert ? 2.5 : isHard ? 2 : 1.4);
-  score += (remainingStructure - fullStructure) * (isExpert ? 2.7 : isHard ? 2.1 : 1.5);
-  score += remainingHandOptionScore(remainingMask, context) * (isExpert ? 1.5 : isHard ? 1.1 : 0.7);
-  score -= broken * (isExpert ? 1.8 : isHard ? 1.4 : 1.05);
-  score += (remainingControl - fullControl) * (danger >= 2 ? 0.2 : isExpert ? 2.2 : isHard ? 1.7 : 1.1);
-
-  if (finishes) {
-    // Ao bater, uma combinação forte reduz as chances de os adversários descartarem cartas
-    // na última oportunidade da rodada.
-    score += 30000 + power * 20;
+  const isAdvanced = difficulty === "hard" || isExpert;
+  score += play.cards.length * (isExpert ? 52 : isAdvanced ? 44 : 38);
+  score -= remainingTurns * (isExpert ? 128 : isAdvanced ? 105 : 78);
+  score += structure * (isExpert ? 3.6 : isAdvanced ? 2.8 : 1.9);
+  score -= broken * (isExpert ? 2.05 : isAdvanced ? 1.55 : 1.15);
+  score += control * (isExpert ? 1.9 : isAdvanced ? 1.5 : 0.9);
+  if (isExpert) {
+    score += expertRemainingHandScore(remainingHand, remainingMask, context);
+    score += expertResponsePressure(room, player, play);
   }
 
-  if (remainingTurns === 1 && remainingHand.length > 0) score += isExpert ? 620 : isHard ? 480 : 330;
-  if (remainingTurns === 2 && remainingHand.length <= 6) score += isExpert ? 210 : 140;
+  if (finishes) score += 12000;
 
   if (isOpening) {
-    score += tableShapeScore(room, player, play);
-    if (play.combo.count === 5) score += 35;
-    if (nextOpponent && nextOpponent.hand.length === play.combo.count && nextOpponent.hand.length <= 5) {
-      score -= danger >= 2 ? 250 : 120;
-    }
-    if (nextOpponent && play.combo.count > nextOpponent.hand.length) score += 120;
+    score += play.cards.length * (isExpert ? 36 : isAdvanced ? 30 : 22);
+    if (nearestOpponent <= 1 && play.combo.count === 1) score -= 180;
+    if (nearestOpponent <= 2 && play.combo.count >= 2) score += 90;
   } else {
-    // Em situação normal, vence com a menor força necessária. Quando existe perigo,
-    // o bot aceita gastar uma carta forte para impedir a batida do adversário.
-    const conservationWeight = danger === 0 ? 3.8 : danger === 1 ? 2 : -1.8;
-    score -= power * conservationWeight;
+    score -= powerCost * (isExpert ? 2.7 : isAdvanced ? 2.4 : 1.7);
   }
 
   for (const card of play.cards) {
-    if (card.rank === 12) score -= danger >= 2 || finishes ? 0 : isExpert ? 88 : isHard ? 68 : 48;
-    else if (card.rank === 11) score -= danger >= 2 || finishes ? 0 : isExpert ? 36 : isHard ? 27 : 18;
+    if (card.rank === 12) score -= danger >= 2 ? 5 : (isExpert ? 68 : isAdvanced ? 55 : 38);
+    else if (card.rank === 11) score -= danger >= 2 ? 2 : (isExpert ? 27 : isAdvanced ? 20 : 13);
   }
 
   if (danger >= 1) {
-    score += play.cards.length * danger * 35;
-    score += turnGain * danger * 75;
+    score += play.cards.length * danger * 22;
+    score -= remainingTurns * danger * 18;
+  }
+
+  if (danger >= 2 && room.lastPlay?.combo.count === 1) {
+    score += powerCost * 3.2;
   }
 
   if (room.mode === "points") {
-    const scoreRisk = Math.max(0, player.score - 20);
-    score += play.cards.length * scoreRisk * 2.6;
-    score += turnGain * scoreRisk * 6;
-    score -= remainingHand.length * scoreRisk * 1.5;
+    const proximity = Math.max(0, player.score - 20);
+    score += play.cards.length * proximity * 1.8;
+    score -= remainingHand.length * proximity * 1.2;
   }
 
   return score;
-}
-
-function evaluateBotPass(room, player, context, difficulty) {
-  const danger = publicDangerLevel(room, player);
-  const nextOpponent = opponentsInTurnOrder(room, player).find(item => item.hand.length > 0);
-  let score = -40;
-
-  if (difficulty === "medium") score += 12;
-  if (danger === 1) score -= 115;
-  if (danger === 2) score -= 280;
-  if (danger === 3) score -= 520;
-  if (player.hand.length <= 5) score -= 180;
-  if (player.hand.length <= 2) score -= 350;
-  if (nextOpponent?.hand.length <= 2) score -= 260;
-  if (room.mode === "points" && player.score >= 24) score -= 180;
-
-  // Passar pode ser razoável quando a mão está muito bem organizada e não há perigo.
-  score += Math.max(0, handStructureScore(player.hand, context, context.fullMask) - 25) * 1.2;
-  return score;
-}
-
-function addControlSimulation(room, player, evaluated, difficulty) {
-  if (difficulty === "medium" || !evaluated.length) return evaluated;
-  const sampleCount = difficulty === "expert" ? 56 : 22;
-  const candidateLimit = difficulty === "expert" ? 16 : 8;
-  const sorted = [...evaluated].sort((a, b) => b.aiScore - a.aiScore);
-  const candidates = new Set(sorted.slice(0, candidateLimit));
-
-  // Sempre simula jogadas que terminam a mão e as mais fortes, mesmo se a heurística
-  // inicial não as colocou entre as primeiras.
-  sorted.filter(item => item.cards.length === player.hand.length).forEach(item => candidates.add(item));
-  sorted.slice().sort((a, b) => compareTuples(b.combo.strength, a.combo.strength)).slice(0, 4)
-    .forEach(item => candidates.add(item));
-
-  const danger = publicDangerLevel(room, player);
-  for (const candidate of candidates) {
-    const control = estimatePlayControl(room, player, candidate, sampleCount);
-    const finishing = candidate.cards.length === player.hand.length;
-    const closing = room.closingPhase;
-    const controlWeight = finishing || closing ? 760 : room.lastPlay ? 210 : 300;
-    candidate.aiScore += control.noOneBeats * controlWeight;
-    candidate.aiScore -= control.nextBeats * (danger >= 2 ? 330 : 120);
-    candidate.aiScore -= control.criticalBeats * (danger >= 1 ? 270 : 100);
-  }
-
-  return evaluated;
 }
 
 function chooseBotPlay(room, player) {
@@ -1233,26 +1000,28 @@ function chooseBotPlay(room, player) {
 
   const difficulty = normalizeBotDifficulty(player.difficulty || room.botDifficulty);
   const context = buildBotAnalysisContext(player.hand);
-  let evaluated = legal.map(play => ({
+  const evaluated = legal.map(play => ({
     ...play,
     aiScore: evaluateBotPlay(room, player, play, context, difficulty)
   }));
 
-  evaluated = addControlSimulation(room, player, evaluated, difficulty);
   evaluated.sort((a, b) => {
     if (b.aiScore !== a.aiScore) return b.aiScore - a.aiScore;
-    // Em jogadas finais prefere a mais forte; no restante prefere a mais econômica.
-    if (room.closingPhase || a.cards.length === player.hand.length) {
-      return compareTuples(b.combo.strength, a.combo.strength);
-    }
     return compareTuples(a.combo.strength, b.combo.strength);
   });
 
-  const chosen = evaluated[0];
+  const best = evaluated[0];
+  let chosen = best;
+  if (difficulty === "hard") {
+    const nearBest = evaluated.filter(item => item.aiScore >= best.aiScore - 5).slice(0, 3);
+    if (nearBest.length > 1) chosen = nearBest[crypto.randomInt(0, nearBest.length)];
+  }
+
   if (room.closingPhase || !room.lastPlay || chosen.cards.length === player.hand.length) return chosen;
 
-  const passScore = evaluateBotPass(room, player, context, difficulty);
-  return chosen.aiScore >= passScore ? chosen : null;
+  const danger = publicDangerLevel(room, player);
+  const passThreshold = danger >= 2 ? -1000 : difficulty === "expert" ? -12 : difficulty === "hard" ? -28 : -42;
+  return chosen.aiScore < passThreshold ? null : chosen;
 }
 
 function clearBotTimer(code) {
@@ -1665,5 +1434,5 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v2.5 rodando na porta ${PORT}`);
+  console.log(`Pôquer Chinês Online v2.6 rodando na porta ${PORT}`);
 });

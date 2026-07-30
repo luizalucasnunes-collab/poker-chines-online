@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "2.7.0",
+  "version": "2.6.0",
   "private": true,
-  "description": "Pôquer Chinês online com bots estratégicos da versão 2.6 e organização da mão por números ou naipes da versão 2.7.",
+  "description": "Pôquer Chinês online com bots inteligentes, relógio, revanche coletiva e sequência J-Q-K-A-2 proibida.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
