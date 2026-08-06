@@ -1,72 +1,43 @@
-# Pôquer Chinês Online v3.0
+# Pôquer Chinês Online v3.1
 
-## Bots revisados
+## Alterações principais
 
-- **Médio:** usa planejamento da mão, preserva combinações e sempre joga a melhor opção legal em vez de passar aleatoriamente.
-- **Difícil:** calcula a melhor divisão completa da mão e só passa quando preservar a estrutura é realmente superior.
-- **Especialista:** acrescenta contagem de cartas públicas e simulações das distribuições possíveis, sem enxergar mãos escondidas.
-- Todos os níveis respeitam o 3♦ inicial, J–Q–K–A–2 proibida, Flush por naipe, batida, relógio e pontuação.
+- O **Flush é comparado somente pelos valores das cartas**, começando pela maior.
+- O naipe não é usado para desempatar Flushes.
+- O chat e seu botão foram removidos.
+- Interface inicial, sala de espera, mesa, cartas, botões, modais e versão móvel foram redesenhados.
+- Mantidos os bots Médio, Difícil e Especialista corrigidos.
+- Mantidos o relógio de 30 ou 60 segundos, a dica temporária, a revanche coletiva e a organização da mão.
+- A sequência J-Q-K-A-2 permanece proibida.
 
-- Bot Especialista refeito com planejamento exato da mão, decisão estratégica de passe e estimativa pública de controle da mesa.
+## Regra de comparação do Flush
 
-- Organização pessoal da mão por número ou por naipe, com preferência salva no navegador.
-Jogo multiplayer online para quatro jogadores, com salas públicas ou privadas, bots inteligentes, relógio por jogada, pontuação por blocos e chat dentro da sala.
+As cinco cartas são ordenadas da maior para a menor. A comparação ocorre nesta ordem:
 
-## Chat da sala
+1. maior carta;
+2. segunda maior;
+3. terceira maior;
+4. quarta maior;
+5. menor carta.
 
-- Disponível na sala de espera, durante a partida e entre rodadas.
-- O botão **Chat** permanece no canto inferior direito.
-- Mensagens novas aparecem em um contador quando o painel está fechado.
-- As últimas 100 mensagens ficam disponíveis enquanto a sala existir.
-- Cada mensagem aceita até 280 caracteres.
-- O servidor limita envios muito rápidos para evitar spam.
-- Somente jogadores humanos que estão na sala podem enviar mensagens.
-- O histórico continua durante as rodadas, blocos e revanches da mesma sala.
-
-## Regras e recursos principais
-
-- 4 jogadores, usando as 52 cartas.
-- Ordem das cartas: 3 até 2.
-- Ordem dos naipes: ♦ Ouros, ♥ Copas, ♠ Espadas e ♣ Paus.
-- O Flush é comparado primeiro pelo naipe e depois pela maior carta.
-- A sequência J-Q-K-A-2 é proibida; a maior sequência é 10-J-Q-K-A.
-- Bots Médio, Difícil e Especialista.
-- Tempo de 30 ou 60 segundos por jogada.
-- Dica temporária que levanta e depois abaixa as cartas.
-- Confirmação coletiva para próxima rodada, próximo bloco ou revanche.
-
-## Estrutura do projeto
-
-```text
-public/
-  app.js
-  index.html
-  style.css
-
-server.js
-package.json
-package-lock.json
-render.yaml
-README.md
-.gitignore
-```
+O naipe não interfere. Se dois Flushes tiverem exatamente os mesmos valores, eles têm a mesma força.
 
 ## Render
 
 Build Command:
 
-```bash
+```text
 corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
 ```
 
 Start Command:
 
-```bash
+```text
 node server.js
 ```
 
-Variável de ambiente:
+Health check:
 
 ```text
-NODE_VERSION=24.17.0
+/health
 ```

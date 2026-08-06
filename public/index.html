@@ -11,42 +11,27 @@
   <div id="toast" class="toast"></div>
   <button id="globalHomeBtn" class="global-home hidden" aria-label="Voltar ao início">⌂ Início</button>
 
-  <button id="chatToggleBtn" class="chat-toggle hidden" type="button" aria-expanded="false" aria-controls="chatPanel" aria-label="Abrir chat da sala">
-    <span class="chat-toggle-icon">💬</span>
-    <span>Chat</span>
-    <span id="chatUnreadBadge" class="chat-unread hidden">0</span>
-  </button>
-
-  <aside id="chatPanel" class="chat-panel hidden" aria-label="Chat da sala">
-    <header class="chat-header">
-      <div><strong>Chat da sala</strong><small>Somente os jogadores desta mesa</small></div>
-      <button id="closeChatBtn" class="chat-close" type="button" aria-label="Fechar chat">×</button>
-    </header>
-    <div id="chatMessages" class="chat-messages" aria-live="polite" aria-relevant="additions"></div>
-    <form id="chatForm" class="chat-form" autocomplete="off">
-      <label class="sr-only" for="chatInput">Mensagem</label>
-      <input id="chatInput" maxlength="280" placeholder="Escreva uma mensagem..." autocomplete="off">
-      <div class="chat-form-footer">
-        <small id="chatCounter">0/280</small>
-        <button id="chatSendBtn" class="btn primary compact" type="submit">Enviar</button>
-      </div>
-    </form>
-  </aside>
 
   <main>
     <section id="homeScreen" class="screen home-screen">
       <div class="hero">
-        <div class="hero-mark">🀄</div>
-        <div>
+        <div class="hero-mark" aria-hidden="true">🀄</div>
+        <div class="hero-copy">
           <p class="eyebrow">MULTIPLAYER ONLINE</p>
           <h1>Pôquer Chinês</h1>
-          <p class="subtitle">Jogue com amigos, entre em salas públicas ou complete a mesa com bots.</p>
+          <p class="subtitle">Uma mesa rápida para jogar com amigos ou enfrentar bots estratégicos.</p>
+          <div class="hero-features" aria-label="Recursos principais">
+            <span>4 jogadores</span>
+            <span>30s ou 60s</span>
+            <span>3 níveis de bots</span>
+            <span>Partida por pontos</span>
+          </div>
         </div>
       </div>
 
       <div class="entry-grid">
-        <article class="panel">
-          <h2>Criar uma sala</h2>
+        <article class="panel create-panel">
+          <div class="panel-title"><span class="panel-icon">＋</span><div><p class="eyebrow">NOVA MESA</p><h2>Criar uma sala</h2></div></div>
           <label>Seu nome
             <input id="createName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Pedro">
           </label>
@@ -73,20 +58,20 @@
             <input id="publicRoomCheck" type="checkbox" checked>
             <span>Mostrar esta sala na lista pública</span>
           </label>
-          <button id="createRoomBtn" class="btn primary full">Criar sala</button>
+          <button id="createRoomBtn" class="btn primary full">Criar minha sala</button>
           <button id="playBotsBtn" class="btn bot-quick full">🤖 Jogar agora contra 3 bots</button>
           <p class="helper bot-helper">Cria uma sala privada, adiciona três bots e inicia imediatamente.</p>
         </article>
 
-        <article class="panel">
-          <h2>Entrar em uma sala</h2>
+        <article class="panel join-panel">
+          <div class="panel-title"><span class="panel-icon">→</span><div><p class="eyebrow">CÓDIGO DE CONVITE</p><h2>Entrar em uma sala</h2></div></div>
           <label>Seu nome
             <input id="joinName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Janaína">
           </label>
           <label>Código da sala
             <input id="roomCodeInput" maxlength="6" class="room-input" placeholder="ABCDE">
           </label>
-          <button id="joinRoomBtn" class="btn full">Entrar na sala</button>
+          <button id="joinRoomBtn" class="btn full">Entrar na mesa</button>
         </article>
       </div>
 
@@ -213,8 +198,8 @@
           aria-label="Organizar cartas por número" aria-pressed="true" title="Organizar por número">123 Número</button>
         <button id="sortBySuitBtn" class="btn ghost sort-hand-btn" type="button"
           aria-label="Organizar cartas por naipe" aria-pressed="false" title="Organizar por naipe">♠ Naipe</button>
-        <button id="hintBtn" class="btn ghost">Dica</button>
-        <button id="passBtn" class="btn danger">Passar</button>
+        <button id="hintBtn" class="btn ghost">✦ Dica</button>
+        <button id="passBtn" class="btn danger">Passar vez</button>
       </div>
     </section>
   </main>
@@ -229,7 +214,7 @@
         <div><b>Naipes</b><span>♦ Ouros, ♥ Copas, ♠ Espadas e ♣ Paus.</span></div>
         <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa e deve usá-lo na primeira combinação.</span></div>
         <div><b>Jogadas</b><span>Carta, dupla, trinca ou uma combinação de cinco cartas.</span></div>
-        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe. No Flush, primeiro vale o naipe e depois a maior carta.</span></div>
+        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe. No Flush, comparam-se apenas os números das cartas, começando pela maior; o naipe não interfere.</span></div>
         <div><b>Jogar</b><span>Selecione as cartas e clique no centro da mesa.</span></div>
         <div><b>Pontuação</b><span>Ao final de cada rodada, cada jogador soma 1 ponto por carta que permaneceu em sua mão.</span></div>
         <div><b>Blocos de rodadas</b><span>Os pontos são conferidos a cada 4 rodadas. Se ninguém atingir 31, começa outro bloco de 4, mantendo o total acumulado.</span></div>
@@ -237,7 +222,6 @@
         <div><b>Rodada</b><span>Após três passes consecutivos, a mesa é liberada para quem fez a última jogada.</span></div>
         <div><b>Bots corrigidos</b><span>Médio joga com consistência; Difícil planeja toda a mão; Especialista acrescenta contagem pública e simulações. Nenhum bot enxerga cartas escondidas.</span></div>
         <div><b>Tempo por jogada</b><span>O anfitrião escolhe 30 ou 60 segundos. Se o tempo acabar, o jogador passa automaticamente; com a mesa livre, o sistema faz uma jogada válida.</span></div>
-        <div><b>Chat da sala</b><span>Os jogadores humanos podem conversar na sala de espera, durante a partida e entre as rodadas.</span></div>
         <div><b>Organização da mão</b><span>Cada jogador pode ordenar suas cartas por número ou por naipe sem alterar as cartas selecionadas.</span></div>
       </div>
       <p class="rule-note">As sequências vão de 3-4-5-6-7 até 10-J-Q-K-A. A combinação J-Q-K-A-2 é proibida como sequência.</p>

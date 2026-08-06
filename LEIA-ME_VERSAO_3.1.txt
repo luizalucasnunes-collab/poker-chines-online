@@ -1,0 +1,66 @@
+PÔQUER CHINÊS ONLINE — VERSÃO 3.1
+==================================
+
+ALTERAÇÕES
+----------
+1. FLUSH SOMENTE POR NÚMERO
+- O naipe não influencia a força do Flush.
+- Primeiro é comparada a maior carta.
+- Em caso de igualdade, é comparada a segunda maior, depois a terceira,
+  a quarta e a quinta.
+- Dois Flushes com exatamente os mesmos valores possuem a mesma força.
+
+2. CHAT REMOVIDO
+- O botão de chat não aparece mais.
+- O painel de chat foi removido da interface.
+- O envio e o histórico de mensagens foram removidos do projeto.
+
+3. DESIGN MELHORADO
+- Nova identidade visual da página inicial.
+- Painéis mais limpos e organizados.
+- Melhor hierarquia dos títulos e campos.
+- Mesa com acabamento mais premium.
+- Cartas e jogadores com melhor contraste.
+- Barra de ações mais clara.
+- Modais e versão para celular revisados.
+
+FUNÇÕES MANTIDAS
+----------------
+- Bots Médio, Difícil e Especialista.
+- Tempo de 30 ou 60 segundos.
+- Dica que levanta e abaixa as cartas.
+- Organização por número ou naipe.
+- Revanche confirmada pelos jogadores.
+- J-Q-K-A-2 proibida como sequência.
+- Pontuação por blocos de quatro rodadas.
+
+ATUALIZAR NO GITHUB
+-------------------
+1. Extraia o ZIP.
+2. Abra o repositório poker-chines-online.
+3. Clique em Add file → Upload files.
+4. Arraste todo o conteúdo extraído.
+5. Em Commit message, escreva:
+   Corrigir Flush e melhorar o design
+6. Selecione Commit directly to the main branch.
+7. Clique em Commit changes.
+
+RENDER
+------
+O deploy normalmente começa automaticamente.
+
+Caso não comece:
+Manual Deploy → Deploy latest commit
+
+Depois que o serviço ficar Live:
+1. Abra o jogo.
+2. Pressione Ctrl + F5.
+3. Confira a nova interface.
+4. Teste dois Flushes de naipes diferentes.
+
+TESTE DA VERSÃO
+---------------
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+{"ok":true,"version":"3.1.0"}
