@@ -104,7 +104,7 @@ app.get("/api/leaderboard", async (_req, res) => {
 
 app.get("/health", (_req, res) => res.json({
   ok: true,
-  version: "4.3.0",
+  version: "4.4.0",
   hosting: process.env.RENDER === "true" ? "render-free" : "local",
   storage: storage.status()
 }));
@@ -2100,7 +2100,7 @@ async function startServer() {
   await storage.init();
   server.listen(PORT, "0.0.0.0", () => {
     const status = storage.status();
-    console.log(`Pôquer Chinês Online v4.3 rodando na porta ${PORT}`);
+    console.log(`Pôquer Chinês Online v4.4 rodando na porta ${PORT}`);
     console.log(`Armazenamento de usuários: ${status.backend}${status.persistent ? " (persistente)" : " (local; configure DATABASE_URL para persistência no Render)"}`);
   });
 }

@@ -1,0 +1,42 @@
+PÔQUER CHINÊS ONLINE v4.4
+=========================
+
+MUDANÇAS VISUAIS
+----------------
+- Números editoriais removidos da página inicial.
+- Mesa de jogo em preto.
+- Botões não pulam e não criam sombra ao clicar ou passar o mouse.
+- Cartas selecionadas sobem, mas não recebem sombra preta.
+- Centro da mesa não se desloca ao passar o mouse.
+- Montserrat permanece nos títulos.
+- Inter permanece nos textos e controles.
+- Hexagrama permanece no verso das cartas.
+- Naipes pretos permanecem em preto.
+
+FUNÇÕES PRESERVADAS
+-------------------
+- Cadastro e login.
+- Neon PostgreSQL.
+- Ranking de partidas únicas.
+- Ranking de blocos de 4.
+- Histórico do jogador.
+- Bots Médio, Difícil e Especialista.
+- Cronômetro de 30 ou 60 segundos.
+- Dica e organização das cartas.
+- Salas públicas e partidas online.
+
+ATUALIZAÇÃO
+-----------
+1. Extraia este ZIP.
+2. Envie todo o conteúdo para o mesmo repositório do GitHub.
+3. Commit sugerido:
+   Remover números da home e aplicar mesa preta
+4. Aguarde o Render publicar.
+5. Abra o site e pressione Ctrl + F5.
+
+HEALTH CHECK
+------------
+/health
+
+Versão esperada:
+4.4.0
