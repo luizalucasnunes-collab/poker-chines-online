@@ -1,0 +1,27 @@
+PÔQUER CHINÊS ONLINE v4.3
+===========================
+
+ALTERAÇÕES
+----------
+1. Fonte de títulos: Montserrat.
+2. Fonte da interface: Inter.
+3. Títulos, botões, campos, cartas e placares receberam tamanhos maiores.
+4. O verso das cartas agora utiliza o símbolo vermelho central da primeira página do PDF.
+5. A frente das cartas permanece marfim.
+6. ♦ e ♥ permanecem vermelhos.
+7. ♠ e ♣ permanecem pretos.
+
+PUBLICAR NO MESMO SITE
+----------------------
+1. Extraia este ZIP.
+2. Envie todo o conteúdo para o mesmo repositório poker-chines-online.
+3. Commit sugerido:
+   Aplicar Montserrat Inter e hexagrama no verso das cartas
+4. Aguarde o deploy automático do Render.
+5. Caso necessário:
+   Manual Deploy → Deploy latest commit
+6. Abra o site e pressione Ctrl + F5.
+
+TESTE
+-----
+Abra /health e confirme a versão 4.3.0.

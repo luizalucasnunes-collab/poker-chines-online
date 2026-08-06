@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "private": true,
-  "description": "Pôquer Chinês Online preparado para hospedagem gratuita no Render com usuários e rankings persistentes no Neon PostgreSQL gratuito.",
+  "description": "Pôquer Chinês Online com Montserrat + Inter e verso das cartas inspirado no hexagrama da primeira página do PDF.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

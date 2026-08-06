@@ -1,41 +1,28 @@
-# Pôquer Chinês Online v4.2
+# Pôquer Chinês Online v4.3
 
-Versão completa preparada para funcionar online sem mensalidade usando:
+## Alterações visuais
 
-- **Render Free Web Service** para Node.js, Express e Socket.IO;
-- **Neon Free PostgreSQL** para usuários, partidas e rankings persistentes;
-- **GitHub** para versionamento e deploy automático.
+- **Montserrat** aplicada aos títulos, números de seção e destaques.
+- **Inter** aplicada aos textos, formulários, botões e interface.
+- Escala tipográfica ampliada e reorganizada para desktop e celular.
+- Verso das cartas substituído pelo **símbolo vermelho central da primeira página do PDF enviado**.
+- O símbolo foi extraído com fundo transparente e aplicado sobre carta marfim, com borda vermelha.
+- Naipes vermelhos continuam vermelhos; espadas e paus continuam pretos.
 
-## Variáveis obrigatórias no Render
+## Hospedagem
 
-```text
-DATABASE_URL
-SESSION_SECRET
-ONLINE_ONLY=true
-NODE_ENV=production
-```
+Mantém a arquitetura gratuita:
 
-## Comandos
+- Render Free para o servidor online;
+- Neon PostgreSQL para usuários e rankings;
+- GitHub para o código.
 
-```text
-Build Command: npm ci --omit=dev
-Start Command: node server.js
-Health Check: /health
-```
+## Atualização
 
-## Resultado esperado do health check
+Envie todos os arquivos deste pacote para o mesmo repositório já conectado ao Render. O endereço online permanece o mesmo.
 
-```json
-{
-  "ok": true,
-  "version": "4.2.0",
-  "hosting": "render-free",
-  "storage": {
-    "backend": "postgres",
-    "persistent": true,
-    "configured": true
-  }
-}
-```
+Build Command: `npm ci --omit=dev`
 
-O servidor cria automaticamente as tabelas necessárias no primeiro início.
+Start Command: `node server.js`
+
+Health Check: `/health`
