@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "3.1.0",
+  "version": "4.2.0",
   "private": true,
-  "description": "Pôquer Chinês online com Flush por valores, bots inteligentes, relógio, revanche coletiva e interface redesenhada.",
+  "description": "Pôquer Chinês Online preparado para hospedagem gratuita no Render com usuários e rankings persistentes no Neon PostgreSQL gratuito.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "express": "5.2.1",
-    "socket.io": "4.8.3"
+    "socket.io": "4.8.3",
+    "pg": "^8.16.3"
   }
 }

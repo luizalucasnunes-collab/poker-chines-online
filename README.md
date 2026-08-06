@@ -1,43 +1,41 @@
-# Pôquer Chinês Online v3.1
+# Pôquer Chinês Online v4.2
 
-## Alterações principais
+Versão completa preparada para funcionar online sem mensalidade usando:
 
-- O **Flush é comparado somente pelos valores das cartas**, começando pela maior.
-- O naipe não é usado para desempatar Flushes.
-- O chat e seu botão foram removidos.
-- Interface inicial, sala de espera, mesa, cartas, botões, modais e versão móvel foram redesenhados.
-- Mantidos os bots Médio, Difícil e Especialista corrigidos.
-- Mantidos o relógio de 30 ou 60 segundos, a dica temporária, a revanche coletiva e a organização da mão.
-- A sequência J-Q-K-A-2 permanece proibida.
+- **Render Free Web Service** para Node.js, Express e Socket.IO;
+- **Neon Free PostgreSQL** para usuários, partidas e rankings persistentes;
+- **GitHub** para versionamento e deploy automático.
 
-## Regra de comparação do Flush
-
-As cinco cartas são ordenadas da maior para a menor. A comparação ocorre nesta ordem:
-
-1. maior carta;
-2. segunda maior;
-3. terceira maior;
-4. quarta maior;
-5. menor carta.
-
-O naipe não interfere. Se dois Flushes tiverem exatamente os mesmos valores, eles têm a mesma força.
-
-## Render
-
-Build Command:
+## Variáveis obrigatórias no Render
 
 ```text
-corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+DATABASE_URL
+SESSION_SECRET
+ONLINE_ONLY=true
+NODE_ENV=production
 ```
 
-Start Command:
+## Comandos
 
 ```text
-node server.js
+Build Command: npm ci --omit=dev
+Start Command: node server.js
+Health Check: /health
 ```
 
-Health check:
+## Resultado esperado do health check
 
-```text
-/health
+```json
+{
+  "ok": true,
+  "version": "4.2.0",
+  "hosting": "render-free",
+  "storage": {
+    "backend": "postgres",
+    "persistent": true,
+    "configured": true
+  }
+}
 ```
+
+O servidor cria automaticamente as tabelas necessárias no primeiro início.

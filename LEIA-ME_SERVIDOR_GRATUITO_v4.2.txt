@@ -1,0 +1,106 @@
+PÔQUER CHINÊS ONLINE v4.2 — HOSPEDAGEM GRATUITA
+================================================
+
+ARQUITETURA SEM MENSALIDADE
+---------------------------
+- GitHub: código-fonte.
+- Render Free Web Service: servidor Node.js e Socket.IO.
+- Neon Free PostgreSQL: usuários, senhas protegidas, partidas e rankings.
+
+O banco NÃO fica no disco temporário do Render.
+
+SOBRE O SITE ANTERIOR
+---------------------
+Ao atualizar o mesmo repositório conectado ao mesmo Web Service:
+- o endereço onrender.com continua igual;
+- a nova versão passa a ser a versão ativa;
+- o código anterior continua no histórico de commits do GitHub;
+- os deploys anteriores podem aparecer no histórico do Render.
+
+Não crie outro Web Service se deseja manter o mesmo endereço.
+Use o serviço existente chamado poker-chines-online.
+
+1. CRIAR O BANCO GRATUITO NO NEON
+---------------------------------
+1. Crie uma conta gratuita no Neon.
+2. Crie um projeto PostgreSQL.
+3. Abra Connect.
+4. Copie a Connection string completa.
+5. Ela começa com postgresql:// e normalmente termina com sslmode=require.
+
+2. ATUALIZAR O GITHUB
+---------------------
+1. Extraia este ZIP.
+2. Abra o repositório poker-chines-online.
+3. Clique em Add file → Upload files.
+4. Arraste todo o conteúdo extraído.
+5. Não envie o próprio ZIP.
+6. Mensagem do commit:
+   Preparar hospedagem gratuita no Render e Neon
+7. Confirme na branch main.
+
+3. USAR O SERVIÇO ANTIGO DO RENDER
+----------------------------------
+1. Abra o serviço poker-chines-online já existente.
+2. Não exclua o serviço.
+3. Não crie outro serviço se deseja manter o mesmo link.
+4. Abra Environment.
+5. Adicione ou atualize:
+
+DATABASE_URL = connection string do Neon
+ONLINE_ONLY = true
+NODE_ENV = production
+SESSION_SECRET = uma chave longa e aleatória
+
+4. CONFIGURAÇÕES GRATUITAS DO RENDER
+------------------------------------
+Instance Type:
+Free
+
+Build Command:
+npm ci --omit=dev
+
+Start Command:
+node server.js
+
+Health Check Path:
+/health
+
+Root Directory:
+deixe vazio
+
+5. PUBLICAR
+-----------
+O deploy costuma iniciar após o commit.
+
+Caso não inicie:
+Manual Deploy → Deploy latest commit
+
+Caso exista cache antigo:
+Manual Deploy → Clear build cache & deploy
+
+6. CONFERIR
+-----------
+Abra:
+https://poker-chines-online.onrender.com/health
+
+Resultado esperado:
+
+{
+  "ok": true,
+  "version": "4.2.0",
+  "hosting": "render-free",
+  "storage": {
+    "backend": "postgres",
+    "persistent": true,
+    "configured": true
+  }
+}
+
+7. LIMITAÇÃO DO SERVIDOR GRATUITO
+---------------------------------
+O Render Free pode entrar em repouso após um período sem acessos.
+O primeiro acesso depois do repouso pode levar aproximadamente um minuto.
+Durante uma partida ativa, as conexões WebSocket mantêm tráfego com o servidor.
+
+Os usuários e rankings permanecem no Neon mesmo quando o servidor repousa.

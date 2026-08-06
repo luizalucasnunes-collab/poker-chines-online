@@ -5,8 +5,11 @@ const crypto = require("crypto");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const storage = require("./storage");
 
 const PORT = Number(process.env.PORT || 3000);
+const SESSION_SECRET = String(process.env.SESSION_SECRET || "").trim() || crypto.randomBytes(48).toString("hex");
+const AUTH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -16,8 +19,95 @@ const io = new Server(server, {
 });
 
 app.disable("x-powered-by");
+app.use(express.json({ limit: "24kb" }));
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/health", (_req, res) => res.json({ ok: true, version: "3.1.0" }));
+
+function base64Url(value) {
+  return Buffer.from(value).toString("base64url");
+}
+
+function signAuthToken(user) {
+  const payload = base64Url(JSON.stringify({
+    sub: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    exp: Date.now() + AUTH_TOKEN_TTL_MS
+  }));
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function verifyAuthToken(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    if (!payload || !signature) return null;
+    const expected = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+    const left = Buffer.from(signature);
+    const right = Buffer.from(expected);
+    if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) return null;
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!decoded?.sub || Number(decoded.exp) <= Date.now()) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function requestToken(req) {
+  const header = String(req.headers.authorization || "");
+  return header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+}
+
+async function requestUser(req) {
+  const decoded = verifyAuthToken(requestToken(req));
+  if (!decoded) return null;
+  return storage.getUserById(decoded.sub);
+}
+
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const user = await storage.createUser({
+      username: req.body?.username,
+      displayName: req.body?.displayName,
+      password: req.body?.password
+    });
+    res.status(201).json({ ok: true, token: signAuthToken(user), user });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message || "Não foi possível criar a conta." });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const user = await storage.authenticateUser(req.body?.username, req.body?.password);
+    res.json({ ok: true, token: signAuthToken(user), user });
+  } catch (error) {
+    res.status(401).json({ ok: false, error: error.message || "Usuário ou senha inválidos." });
+  }
+});
+
+app.get("/api/auth/me", async (req, res) => {
+  const user = await requestUser(req);
+  if (!user) return res.status(401).json({ ok: false, error: "Sessão inválida ou expirada." });
+  const profile = await storage.getProfile(user.id);
+  res.json({ ok: true, ...profile });
+});
+
+app.get("/api/leaderboard", async (_req, res) => {
+  try {
+    const leaderboard = await storage.getLeaderboard(50);
+    res.json({ ok: true, leaderboard });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: "Não foi possível carregar o ranking." });
+  }
+});
+
+app.get("/health", (_req, res) => res.json({
+  ok: true,
+  version: "4.2.0",
+  hosting: process.env.RENDER === "true" ? "render-free" : "local",
+  storage: storage.status()
+}));
 
 const SUITS = ["♦", "♥", "♠", "♣"];
 const RANKS = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2"];
@@ -62,7 +152,7 @@ function botDifficultyLabel(value) {
 
 function updatePresence(socket, name = null) {
   const existing = onlineUsers.get(socket.id);
-  const normalizedName = name === null ? existing?.name : normalizeName(name);
+  const normalizedName = socket.data.account?.displayName || (name === null ? existing?.name : normalizeName(name));
 
   if (!normalizedName || normalizedName.length < 2) {
     onlineUsers.delete(socket.id);
@@ -88,6 +178,7 @@ function updatePresence(socket, name = null) {
     status,
     roomCode,
     publicRoom,
+    registered: Boolean(socket.data.account?.id),
     updatedAt: Date.now()
   });
 }
@@ -110,7 +201,8 @@ function directoryState() {
       id: user.id,
       name: user.name,
       status: user.status,
-      roomCode: user.status === "lobby" && user.publicRoom ? user.roomCode : null
+      roomCode: user.status === "lobby" && user.publicRoom ? user.roomCode : null,
+      registered: Boolean(user.registered)
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
@@ -153,10 +245,14 @@ function createRoomCode() {
 }
 
 function makeHumanPlayer(name, socket) {
+  const account = socket.data.account || null;
   return {
     id: crypto.randomUUID(),
     token: crypto.randomBytes(24).toString("hex"),
-    name,
+    userId: account?.id || null,
+    username: account?.username || null,
+    registered: Boolean(account?.id),
+    name: account?.displayName || name,
     socketId: socket.id,
     connected: true,
     isBot: false,
@@ -335,6 +431,8 @@ function stateFor(room, viewer) {
       name: player.name,
       connected: player.connected,
       isBot: player.isBot,
+      registered: Boolean(player.userId),
+      username: player.username || null,
       botDifficulty: player.isBot ? (player.difficulty || room.botDifficulty) : null,
       cardCount: player.hand.length,
       score: player.score,
@@ -343,6 +441,8 @@ function stateFor(room, viewer) {
     me: {
       id: viewer.id,
       name: viewer.name,
+      registered: Boolean(viewer.userId),
+      username: viewer.username || null,
       hand: sortCards(viewer.hand),
       token: viewer.token
     },
@@ -497,12 +597,20 @@ function resetSeries(room) {
   room.seriesWinnerIds = [];
   room.seriesLoserIds = [];
   room.rematchVotes = new Set();
+  room.matchRecordId = null;
+  room.statsRecorded = false;
+  room.matchStartedAt = null;
   room.players.forEach(player => { player.score = 0; });
 }
 
 function startMatch(room, newSeries = false) {
   if (!allReady(room)) throw new Error("São necessários quatro jogadores ou bots.");
   if (newSeries) resetSeries(room);
+  if (newSeries || !room.matchRecordId) {
+    room.matchRecordId = crypto.randomUUID();
+    room.statsRecorded = false;
+    room.matchStartedAt = new Date().toISOString();
+  }
 
   const deck = shuffle(makeDeck());
   room.players.forEach((player, index) => {
@@ -563,6 +671,35 @@ function orderedPlayerIdsAfter(room, playerId) {
   return ids;
 }
 
+function queueCompletedMatchRecord(room) {
+  if (room.statsRecorded || room.status !== "finished") return;
+  room.statsRecorded = true;
+  const registeredPlayers = room.players.filter(player => !player.isBot && player.userId);
+  const participants = [...new Set(registeredPlayers.map(player => player.userId))];
+  const winnerPlayerIds = new Set(room.seriesWinnerIds || []);
+  const winners = [...new Set(registeredPlayers
+    .filter(player => winnerPlayerIds.has(player.id))
+    .map(player => player.userId))];
+
+  storage.recordMatch({
+    id: room.matchRecordId || crypto.randomUUID(),
+    roomCode: room.code,
+    mode: room.mode === "points" ? "blocks" : "single",
+    participantUserIds: participants,
+    winnerUserIds: winners,
+    startedAt: room.matchStartedAt || null,
+    finishedAt: new Date().toISOString()
+  }).then(result => {
+    if (!result?.recorded) return;
+    for (const player of registeredPlayers) {
+      if (player.socketId) io.to(player.socketId).emit("profile_updated");
+    }
+  }).catch(error => {
+    room.statsRecorded = false;
+    console.error("Falha ao registrar resultado da partida:", error);
+  });
+}
+
 function finishRound(room) {
   clearBotTimer(room.code);
   clearTurnTimer(room.code);
@@ -589,6 +726,7 @@ function finishRound(room) {
     room.status = "finished";
     room.seriesWinnerIds = room.winnerId ? [room.winnerId] : [];
     room.seriesLoserIds = [];
+    queueCompletedMatchRecord(room);
     return;
   }
 
@@ -604,6 +742,7 @@ function finishRound(room) {
     room.seriesLoserIds = room.players.filter(player => player.score === highestScore).map(player => player.id);
     const lowestScore = Math.min(...room.players.map(player => player.score));
     room.seriesWinnerIds = room.players.filter(player => player.score === lowestScore).map(player => player.id);
+    queueCompletedMatchRecord(room);
   } else {
     room.status = "block_finished";
     room.seriesLoserIds = [];
@@ -1545,8 +1684,45 @@ function tryStartVotedRematch(room) {
   return true;
 }
 
+io.use(async (socket, next) => {
+  try {
+    const decoded = verifyAuthToken(socket.handshake.auth?.token);
+    socket.data.account = decoded ? await storage.getUserById(decoded.sub) : null;
+  } catch {
+    socket.data.account = null;
+  }
+  next();
+});
+
 io.on("connection", socket => {
+  socket.emit("auth_state", { user: socket.data.account || null });
   socket.emit("directory_state", directoryState());
+
+  socket.on("authenticate_user", async (payload, callback = () => {}) => {
+    try {
+      const decoded = verifyAuthToken(payload?.token);
+      const account = decoded ? await storage.getUserById(decoded.sub) : null;
+      socket.data.account = account;
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && roomPlayer(room, socket.data.playerId);
+      if (player && account) {
+        const duplicate = room.players.some(item => item.id !== player.id && item.userId === account.id);
+        const duplicateName = room.players.some(item => item.id !== player.id && item.name.toLowerCase() === account.displayName.toLowerCase());
+        if (!duplicate && !duplicateName) {
+          player.userId = account.id;
+          player.username = account.username;
+          player.registered = true;
+          player.name = account.displayName;
+        }
+      }
+      updatePresence(socket, account?.displayName || null);
+      broadcastDirectory();
+      if (room) emitRoom(room);
+      callback({ ok: true, user: account });
+    } catch (error) {
+      callback({ ok: false, error: "Não foi possível autenticar a conta." });
+    }
+  });
 
   socket.on("set_presence", (payload, callback = () => {}) => {
     try {
@@ -1567,7 +1743,8 @@ io.on("connection", socket => {
 
   socket.on("create_room", (payload, callback = () => {}) => {
     try {
-      const name = normalizeName(payload?.name);
+      const requestedName = normalizeName(payload?.name);
+      const name = socket.data.account?.displayName || requestedName;
       if (name.length < 2) throw new Error("Digite um nome com pelo menos 2 caracteres.");
       const mode = normalizeMode(payload?.mode);
       const botDifficulty = normalizeBotDifficulty(payload?.botDifficulty);
@@ -1603,6 +1780,9 @@ io.on("connection", socket => {
         seriesLoserIds: [],
         roundResults: [],
         rematchVotes: new Set(),
+        matchRecordId: null,
+        statsRecorded: false,
+        matchStartedAt: null,
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -1633,11 +1813,15 @@ io.on("connection", socket => {
   socket.on("join_room", (payload, callback = () => {}) => {
     try {
       const code = normalizeRoomCode(payload?.code);
-      const name = normalizeName(payload?.name);
+      const requestedName = normalizeName(payload?.name);
+      const name = socket.data.account?.displayName || requestedName;
       const room = rooms.get(code);
       if (!room) throw new Error("Sala não encontrada.");
       if (room.status !== "lobby") throw new Error("Esta partida já começou.");
       if (name.length < 2) throw new Error("Digite um nome com pelo menos 2 caracteres.");
+      if (socket.data.account?.id && room.players.some(player => player.userId === socket.data.account.id)) {
+        throw new Error("Sua conta já está participando desta sala.");
+      }
       if (room.players.some(player => player.name.toLowerCase() === name.toLowerCase())) {
         throw new Error("Já existe um jogador com esse nome na sala.");
       }
@@ -1912,6 +2096,21 @@ setInterval(() => {
   broadcastDirectory();
 }, 60 * 1000).unref();
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pôquer Chinês Online v3.1 rodando na porta ${PORT}`);
+async function startServer() {
+  await storage.init();
+  server.listen(PORT, "0.0.0.0", () => {
+    const status = storage.status();
+    console.log(`Pôquer Chinês Online v4.2 rodando na porta ${PORT}`);
+    console.log(`Armazenamento de usuários: ${status.backend}${status.persistent ? " (persistente)" : " (local; configure DATABASE_URL para persistência no Render)"}`);
+  });
+}
+
+startServer().catch(error => {
+  console.error("Não foi possível iniciar o servidor:", error);
+  process.exit(1);
+});
+
+process.on("SIGTERM", async () => {
+  await storage.close().catch(() => {});
+  server.close(() => process.exit(0));
 });

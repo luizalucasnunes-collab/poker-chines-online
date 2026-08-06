@@ -3,9 +3,18 @@ services:
     name: poker-chines-online
     runtime: node
     plan: free
-    buildCommand: corepack enable && corepack prepare yarn@1.22.22 --activate && yarn install --production --non-interactive --network-timeout 600000
+    buildCommand: npm ci --omit=dev
     startCommand: node server.js
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_VERSION
         value: 24.17.0
+      - key: NODE_ENV
+        value: production
+      - key: ONLINE_ONLY
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true

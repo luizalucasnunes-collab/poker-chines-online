@@ -3,145 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#07140f">
+  <meta name="theme-color" content="#d91f26">
+  <meta name="description" content="Pôquer Chinês multiplayer com usuários, ranking e bots inteligentes.">
   <title>Pôquer Chinês Online</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <div id="toast" class="toast"></div>
-  <button id="globalHomeBtn" class="global-home hidden" aria-label="Voltar ao início">⌂ Início</button>
-
+  <button id="globalHomeBtn" class="global-home hidden" aria-label="Voltar ao início">← Início</button>
 
   <main>
     <section id="homeScreen" class="screen home-screen">
-      <div class="hero">
-        <div class="hero-mark" aria-hidden="true">🀄</div>
+      <header class="brand-header">
+        <a class="brand-lockup" href="/" aria-label="Pôquer Chinês">
+          <span class="brand-sun" aria-hidden="true"><span class="suit-emblem"><i>♦</i><i>♥</i><i>♠</i><i>♣</i></span></span>
+          <span class="brand-name"><b>PÔQUER</b><b>CHINÊS</b><small>MULTIPLAYER ONLINE</small></span>
+        </a>
+        <div class="account-nav">
+          <div id="guestAccountBox" class="guest-account">
+            <span>Jogue como visitante ou salve suas vitórias.</span>
+            <button id="openAuthBtn" class="btn ink">Entrar / cadastrar</button>
+          </div>
+          <div id="memberAccountBox" class="member-account hidden">
+            <span class="account-avatar" id="accountAvatar">P</span>
+            <span class="account-copy"><small>JOGADOR CADASTRADO</small><b id="accountDisplayName">Jogador</b></span>
+            <button id="openProfileBtn" class="btn ink">Perfil e ranking</button>
+            <button id="logoutBtn" class="btn text-btn">Sair</button>
+          </div>
+        </div>
+      </header>
+
+      <section class="editorial-hero">
+        <div class="hero-index">00</div>
         <div class="hero-copy">
-          <p class="eyebrow">MULTIPLAYER ONLINE</p>
-          <h1>Pôquer Chinês</h1>
-          <p class="subtitle">Uma mesa rápida para jogar com amigos ou enfrentar bots estratégicos.</p>
+          <p class="eyebrow">ESTRATÉGIA · LEITURA · PLANEJAMENTO</p>
+          <h1>POUCAS REGRAS.<br><span>MUITAS DECISÕES.</span></h1>
+          <p class="subtitle">Quatro jogadores, treze cartas e uma disputa para esvaziar a mão antes dos adversários.</p>
           <div class="hero-features" aria-label="Recursos principais">
             <span>4 jogadores</span>
             <span>30s ou 60s</span>
-            <span>3 níveis de bots</span>
-            <span>Partida por pontos</span>
+            <span>Bots inteligentes</span>
+            <span>Ranking por modalidade</span>
           </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="rising-sun"></div>
+          <div class="brush-mountain"></div>
+          <div class="card-glyphs"><i>♦</i><i>♥</i><i>♠</i><i>♣</i></div>
+        </div>
+      </section>
+
+      <div class="home-layout">
+        <section class="play-column">
+          <div class="section-heading"><span>01</span><div><p class="eyebrow">COMEÇAR</p><h2>Escolha sua mesa</h2></div></div>
+          <div class="entry-grid">
+            <article class="panel paper-panel create-panel">
+              <div class="panel-title"><span class="panel-icon">＋</span><div><p class="eyebrow">NOVA SALA</p><h3>Criar uma mesa</h3></div></div>
+              <label>Nome no jogo
+                <input id="createName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Pedro">
+              </label>
+              <label>Tipo de partida
+                <select id="gameModeSelect">
+                  <option value="single">Partida única</option>
+                  <option value="points">Partida por pontos · blocos de 4</option>
+                </select>
+              </label>
+              <div class="field-row">
+                <label>Inteligência dos bots
+                  <select id="botDifficultySelect">
+                    <option value="medium">Médio</option>
+                    <option value="hard">Difícil</option>
+                    <option value="expert" selected>Especialista</option>
+                  </select>
+                </label>
+                <label>Tempo por jogada
+                  <select id="turnDurationSelect">
+                    <option value="30" selected>30 segundos</option>
+                    <option value="60">60 segundos</option>
+                  </select>
+                </label>
+              </div>
+              <label class="check-label">
+                <input id="publicRoomCheck" type="checkbox" checked>
+                <span>Exibir na lista de salas públicas</span>
+              </label>
+              <button id="createRoomBtn" class="btn primary full">Criar sala</button>
+              <button id="playBotsBtn" class="btn outline full">Jogar agora contra 3 bots</button>
+            </article>
+
+            <article class="panel charcoal-panel join-panel">
+              <div class="panel-title"><span class="panel-icon inverse">→</span><div><p class="eyebrow">CONVITE</p><h3>Entrar em uma sala</h3></div></div>
+              <p class="panel-intro">Use o código compartilhado pelo anfitrião. Jogadores cadastrados usam automaticamente o nome do perfil.</p>
+              <label>Nome no jogo
+                <input id="joinName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Janaína">
+              </label>
+              <label>Código da sala
+                <input id="roomCodeInput" maxlength="6" class="room-input" placeholder="ABCDE">
+              </label>
+              <button id="joinRoomBtn" class="btn cream full">Entrar na mesa</button>
+              <div class="sun-divider"><span></span></div>
+              <button id="homeRulesBtn" class="btn text-light full">Conhecer as regras</button>
+            </article>
+          </div>
+        </section>
+
+        <aside class="ranking-column">
+          <div class="section-heading"><span>02</span><div><p class="eyebrow">CLASSIFICAÇÃO</p><h2>Ranking acumulado</h2></div></div>
+          <article class="ranking-card">
+            <div class="ranking-tabs" role="tablist" aria-label="Modalidade do ranking">
+              <button id="homeRankSingleBtn" class="rank-tab active" data-rank-mode="single">Únicas</button>
+              <button id="homeRankBlocksBtn" class="rank-tab" data-rank-mode="blocks">Blocos de 4</button>
+              <button id="homeRankTotalBtn" class="rank-tab" data-rank-mode="total">Total</button>
+            </div>
+            <div id="homeLeaderboard" class="leaderboard-list"><div class="empty-state">Carregando ranking...</div></div>
+            <p class="ranking-note">Cada vitória de um usuário cadastrado vale 1 ponto na modalidade correspondente.</p>
+          </article>
+        </aside>
+      </div>
+
+      <div class="discovery-section">
+        <div class="section-heading"><span>03</span><div><p class="eyebrow">AGORA</p><h2>Comunidade online</h2></div></div>
+        <div class="discovery-grid">
+          <article class="panel minimal-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">PRESENÇA AO VIVO</p><h3>Jogadores online</h3></div>
+              <span id="onlineCount" class="pill">0 online</span>
+            </div>
+            <p id="onlineHelper" class="helper directory-helper">Digite seu nome para aparecer como disponível.</p>
+            <div id="onlinePlayers" class="online-list"><div class="empty-state">Nenhum jogador identificado.</div></div>
+          </article>
+
+          <article class="panel minimal-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">PARTIDA RÁPIDA</p><h3>Salas abertas</h3></div>
+              <span id="openRoomCount" class="pill">0 salas</span>
+            </div>
+            <p class="helper directory-helper">Entre em uma mesa pública. Bots podem ceder lugar para jogadores.</p>
+            <div id="openRooms" class="online-list"><div class="empty-state">Nenhuma sala pública aguardando jogadores.</div></div>
+          </article>
         </div>
       </div>
 
-      <div class="entry-grid">
-        <article class="panel create-panel">
-          <div class="panel-title"><span class="panel-icon">＋</span><div><p class="eyebrow">NOVA MESA</p><h2>Criar uma sala</h2></div></div>
-          <label>Seu nome
-            <input id="createName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Pedro">
-          </label>
-          <label>Tipo de partida
-            <select id="gameModeSelect">
-              <option value="single">Partida única</option>
-              <option value="points">Partida por pontos (blocos de 4)</option>
-            </select>
-          </label>
-          <label>Inteligência dos bots
-            <select id="botDifficultySelect">
-              <option value="medium">Médio — consistente e sem passes aleatórios</option>
-              <option value="hard">Difícil — planejamento completo da mão</option>
-              <option value="expert" selected>Especialista — planejamento e simulações</option>
-            </select>
-          </label>
-          <label>Tempo para cada jogada
-            <select id="turnDurationSelect">
-              <option value="30" selected>30 segundos</option>
-              <option value="60">60 segundos</option>
-            </select>
-          </label>
-          <label class="check-label">
-            <input id="publicRoomCheck" type="checkbox" checked>
-            <span>Mostrar esta sala na lista pública</span>
-          </label>
-          <button id="createRoomBtn" class="btn primary full">Criar minha sala</button>
-          <button id="playBotsBtn" class="btn bot-quick full">🤖 Jogar agora contra 3 bots</button>
-          <p class="helper bot-helper">Cria uma sala privada, adiciona três bots e inicia imediatamente.</p>
-        </article>
-
-        <article class="panel join-panel">
-          <div class="panel-title"><span class="panel-icon">→</span><div><p class="eyebrow">CÓDIGO DE CONVITE</p><h2>Entrar em uma sala</h2></div></div>
-          <label>Seu nome
-            <input id="joinName" maxlength="20" autocomplete="nickname" placeholder="Ex.: Janaína">
-          </label>
-          <label>Código da sala
-            <input id="roomCodeInput" maxlength="6" class="room-input" placeholder="ABCDE">
-          </label>
-          <button id="joinRoomBtn" class="btn full">Entrar na mesa</button>
-        </article>
-      </div>
-
-      <div class="discovery-grid">
-        <article class="panel directory-panel">
-          <div class="panel-heading">
-            <div><p class="eyebrow">PRESENÇA AO VIVO</p><h2>Jogadores online</h2></div>
-            <span id="onlineCount" class="pill">0 online</span>
-          </div>
-          <p id="onlineHelper" class="helper directory-helper">Digite seu nome para aparecer como disponível.</p>
-          <div id="onlinePlayers" class="online-list"><div class="empty-state">Nenhum jogador identificado.</div></div>
-        </article>
-
-        <article class="panel directory-panel">
-          <div class="panel-heading">
-            <div><p class="eyebrow">PARTIDA RÁPIDA</p><h2>Salas abertas</h2></div>
-            <span id="openRoomCount" class="pill">0 salas</span>
-          </div>
-          <p class="helper directory-helper">Escolha uma sala e clique em Entrar. Bots podem ser substituídos por jogadores.</p>
-          <div id="openRooms" class="online-list"><div class="empty-state">Nenhuma sala pública aguardando jogadores.</div></div>
-        </article>
-      </div>
-
-      <button id="homeRulesBtn" class="link-button">Ver regras do jogo</button>
-      <p class="connection" id="connectionText">Conectando ao servidor...</p>
+      <footer class="site-footer">
+        <span id="connectionText">Conectando ao servidor...</span>
+        <span>公平 · ESTRATÉGIA · EVOLUÇÃO</span>
+      </footer>
     </section>
 
-    <section id="lobbyScreen" class="screen hidden">
-      <header class="topbar">
-        <div><p class="eyebrow">SALA DE ESPERA</p><h1>Pôquer Chinês</h1></div>
+    <section id="lobbyScreen" class="screen hidden lobby-screen">
+      <header class="inner-header">
+        <div class="mini-brand"><span class="mini-sun" aria-hidden="true"><span class="mini-suits"><i>♦</i><i>♥</i><i>♠</i><i>♣</i></span></span><span><small>PÔQUER</small><b>CHINÊS</b></span></div>
+        <div><p class="eyebrow">SALA DE ESPERA</p><h1>A mesa está quase pronta.</h1></div>
         <div class="top-actions">
-          <button id="lobbyRulesBtn" class="btn ghost">Regras</button>
-          <button id="leaveBtn" class="btn danger">Sair da sala</button>
+          <button id="lobbyAccountBtn" class="btn outline">Conta</button>
+          <button id="lobbyRulesBtn" class="btn ink">Regras</button>
+          <button id="leaveBtn" class="btn danger">Sair</button>
         </div>
       </header>
 
       <div class="lobby-layout">
-        <article class="panel room-panel">
-          <span>Código da sala</span>
+        <article class="room-code-card">
+          <span class="big-index">04</span>
+          <p>CÓDIGO DA SALA</p>
           <strong id="roomCodeDisplay">-----</strong>
           <div id="roomModeText" class="mode-badge">Partida única</div>
           <button id="copyRoomBtn" class="btn primary">Copiar convite</button>
-          <p>Envie o código ou use bots para completar quatro jogadores.</p>
+          <div class="room-orbit" aria-hidden="true"></div>
         </article>
 
-        <article class="panel">
-          <div class="panel-heading"><h2>Jogadores</h2><span id="playerCounter" class="pill">0/4</span></div>
+        <article class="panel paper-panel lobby-player-panel">
+          <div class="panel-heading"><div><p class="eyebrow">PARTICIPANTES</p><h2>Jogadores</h2></div><span id="playerCounter" class="pill">0/4</span></div>
           <div id="lobbyPlayers" class="lobby-players"></div>
-          <div id="botDifficultyControl" class="bot-difficulty-control hidden">
-            <label>Dificuldade dos bots
-              <select id="lobbyBotDifficultySelect">
-                <option value="medium">Médio</option>
-                <option value="hard">Difícil</option>
-                <option value="expert">Especialista</option>
-              </select>
-            </label>
-            <small>O anfitrião pode alterar antes de iniciar.</small>
-          </div>
-          <div id="turnDurationControl" class="bot-difficulty-control hidden">
-            <label>Tempo para cada jogada
-              <select id="lobbyTurnDurationSelect">
-                <option value="30">30 segundos</option>
-                <option value="60">60 segundos</option>
-              </select>
-            </label>
-            <small>Quando o tempo acaba, o jogador passa; com a mesa livre, o sistema joga automaticamente.</small>
+          <div class="settings-grid">
+            <div id="botDifficultyControl" class="setting-box hidden">
+              <label>Dificuldade dos bots
+                <select id="lobbyBotDifficultySelect">
+                  <option value="medium">Médio</option>
+                  <option value="hard">Difícil</option>
+                  <option value="expert">Especialista</option>
+                </select>
+              </label>
+            </div>
+            <div id="turnDurationControl" class="setting-box hidden">
+              <label>Tempo por jogada
+                <select id="lobbyTurnDurationSelect">
+                  <option value="30">30 segundos</option>
+                  <option value="60">60 segundos</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div id="hostControls" class="host-controls hidden">
-            <button id="addBotBtn" class="btn ghost">+1 Bot</button>
-            <button id="fillBotsBtn" class="btn ghost">🤖 Completar com bots</button>
+            <button id="addBotBtn" class="btn outline">+1 Bot</button>
+            <button id="fillBotsBtn" class="btn outline">Completar com bots</button>
             <button id="startGameBtn" class="btn primary">Iniciar partida</button>
           </div>
           <p id="lobbyHint" class="helper">Aguardando os jogadores...</p>
@@ -151,15 +205,15 @@
 
     <section id="gameScreen" class="screen game-screen hidden">
       <header class="game-header">
-        <div>
-          <span class="room-badge">Sala <b id="gameRoomCode">-----</b></span>
-          <h1>Pôquer Chinês</h1>
-          <div id="roundText" class="round-text"></div>
+        <div class="game-brand-block">
+          <span class="game-index">05</span>
+          <div><span class="room-badge">SALA <b id="gameRoomCode">-----</b></span><h1>Pôquer Chinês</h1><div id="roundText" class="round-text"></div></div>
         </div>
         <div class="game-actions">
-          <button id="gameRulesBtn" class="btn ghost">Regras</button>
-          <button id="copyGameBtn" class="btn ghost">Convidar</button>
-          <button id="gameLeaveBtn" class="btn danger">Sair da sala</button>
+          <button id="gameAccountBtn" class="btn outline">Conta</button>
+          <button id="gameRulesBtn" class="btn ink">Regras</button>
+          <button id="copyGameBtn" class="btn ink">Convidar</button>
+          <button id="gameLeaveBtn" class="btn danger">Sair</button>
         </div>
       </header>
 
@@ -167,6 +221,7 @@
       <div id="pauseBanner" class="pause-banner hidden">Partida pausada: aguardando um jogador reconectar.</div>
 
       <div class="game-table">
+        <div class="table-sun" aria-hidden="true"></div>
         <div id="seatNorth" class="seat north"></div>
         <div id="seatWest" class="seat west"></div>
         <div id="seatEast" class="seat east"></div>
@@ -194,49 +249,112 @@
       </div>
 
       <div class="action-dock">
-        <button id="sortByRankBtn" class="btn ghost sort-hand-btn active" type="button"
-          aria-label="Organizar cartas por número" aria-pressed="true" title="Organizar por número">123 Número</button>
-        <button id="sortBySuitBtn" class="btn ghost sort-hand-btn" type="button"
-          aria-label="Organizar cartas por naipe" aria-pressed="false" title="Organizar por naipe">♠ Naipe</button>
-        <button id="hintBtn" class="btn ghost">✦ Dica</button>
+        <button id="sortByRankBtn" class="btn outline sort-hand-btn active" type="button" aria-label="Organizar cartas por número" aria-pressed="true">123 Número</button>
+        <button id="sortBySuitBtn" class="btn outline sort-hand-btn" type="button" aria-label="Organizar cartas por naipe" aria-pressed="false">♠ Naipe</button>
+        <button id="hintBtn" class="btn ink">✦ Dica</button>
         <button id="passBtn" class="btn danger">Passar vez</button>
       </div>
     </section>
   </main>
 
-  <div id="rulesModal" class="modal hidden">
-    <div class="modal-card">
-      <div class="modal-heading"><h2>Regras</h2><button id="closeRulesBtn" class="icon-button" aria-label="Fechar">×</button></div>
-      <div class="rules-grid">
-        <div><b>Objetivo</b><span>Termine com a menor pontuação. No modo por pontos, quem atingir 31 pontos perde.</span></div>
-        <div><b>Distribuição</b><span>Quatro jogadores recebem 13 cartas. Todo o baralho é usado.</span></div>
-        <div><b>Cartas</b><span>3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A e 2.</span></div>
-        <div><b>Naipes</b><span>♦ Ouros, ♥ Copas, ♠ Espadas e ♣ Paus.</span></div>
-        <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa e deve usá-lo na primeira combinação.</span></div>
-        <div><b>Jogadas</b><span>Carta, dupla, trinca ou uma combinação de cinco cartas.</span></div>
-        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe. No Flush, comparam-se apenas os números das cartas, começando pela maior; o naipe não interfere.</span></div>
-        <div><b>Jogar</b><span>Selecione as cartas e clique no centro da mesa.</span></div>
-        <div><b>Pontuação</b><span>Ao final de cada rodada, cada jogador soma 1 ponto por carta que permaneceu em sua mão.</span></div>
-        <div><b>Blocos de rodadas</b><span>Os pontos são conferidos a cada 4 rodadas. Se ninguém atingir 31, começa outro bloco de 4, mantendo o total acumulado.</span></div>
-        <div><b>Batida</b><span>Quando alguém joga suas últimas cartas, cada adversário ainda faz uma última jogada ou passa. A rodada termina somente depois que todos tiverem essa oportunidade.</span></div>
-        <div><b>Rodada</b><span>Após três passes consecutivos, a mesa é liberada para quem fez a última jogada.</span></div>
-        <div><b>Bots corrigidos</b><span>Médio joga com consistência; Difícil planeja toda a mão; Especialista acrescenta contagem pública e simulações. Nenhum bot enxerga cartas escondidas.</span></div>
-        <div><b>Tempo por jogada</b><span>O anfitrião escolhe 30 ou 60 segundos. Se o tempo acabar, o jogador passa automaticamente; com a mesa livre, o sistema faz uma jogada válida.</span></div>
-        <div><b>Organização da mão</b><span>Cada jogador pode ordenar suas cartas por número ou por naipe sem alterar as cartas selecionadas.</span></div>
+  <div id="authModal" class="modal hidden">
+    <div class="modal-card auth-card">
+      <button id="closeAuthBtn" class="icon-button close-corner" aria-label="Fechar">×</button>
+      <div class="auth-visual">
+        <span class="auth-index">会</span>
+        <p class="eyebrow">CONTA DE JOGADOR</p>
+        <h2>Suas vitórias passam a ter história.</h2>
+        <p>Cadastre-se para acumular pontos, acompanhar cada modalidade e aparecer no ranking.</p>
+        <div class="auth-sun"></div>
       </div>
-      <p class="rule-note">As sequências vão de 3-4-5-6-7 até 10-J-Q-K-A. A combinação J-Q-K-A-2 é proibida como sequência.</p>
+      <div class="auth-content">
+        <div class="auth-tabs">
+          <button id="loginTabBtn" class="auth-tab active">Entrar</button>
+          <button id="registerTabBtn" class="auth-tab">Criar conta</button>
+        </div>
+        <form id="loginForm" class="auth-form">
+          <label>Usuário
+            <input id="loginUsername" maxlength="24" autocomplete="username" placeholder="seu.usuario" required>
+          </label>
+          <label>Senha
+            <input id="loginPassword" type="password" maxlength="128" autocomplete="current-password" required>
+          </label>
+          <button class="btn primary full" type="submit">Entrar na conta</button>
+        </form>
+        <form id="registerForm" class="auth-form hidden">
+          <label>Nome público
+            <input id="registerDisplayName" maxlength="20" autocomplete="name" placeholder="Como você aparecerá no jogo" required>
+          </label>
+          <label>Nome de usuário
+            <input id="registerUsername" maxlength="24" autocomplete="username" placeholder="letras, números, ponto, hífen ou _" required>
+          </label>
+          <label>Senha
+            <input id="registerPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+          </label>
+          <label>Confirmar senha
+            <input id="registerPasswordConfirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" required>
+          </label>
+          <button class="btn primary full" type="submit">Criar minha conta</button>
+        </form>
+        <p class="auth-note">O jogo continua disponível para visitantes. Somente usuários cadastrados acumulam pontos.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="profileModal" class="modal hidden">
+    <div class="modal-card profile-card">
+      <div class="modal-heading profile-heading">
+        <div><p class="eyebrow">PERFIL DO JOGADOR</p><h2 id="profileName">Jogador</h2><span id="profileUsername">@usuario</span></div>
+        <button id="closeProfileBtn" class="icon-button" aria-label="Fechar">×</button>
+      </div>
+      <div class="profile-stats">
+        <article class="stat-card single-stat"><span>01</span><small>PARTIDAS ÚNICAS</small><strong id="profileSinglePoints">0</strong><em>pontos</em><p><b id="profileSingleWins">0</b> vitórias em <b id="profileSingleGames">0</b> jogos</p></article>
+        <article class="stat-card block-stat"><span>04</span><small>BLOCOS DE QUATRO</small><strong id="profileBlockPoints">0</strong><em>pontos</em><p><b id="profileBlockWins">0</b> vitórias em <b id="profileBlockGames">0</b> séries</p></article>
+        <article class="stat-card total-stat"><span>全</span><small>TOTAL ACUMULADO</small><strong id="profileTotalPoints">0</strong><em>pontos</em><p><b id="profileTotalWins">0</b> vitórias cadastradas</p></article>
+      </div>
+      <div class="profile-grid">
+        <section>
+          <div class="subheading"><p class="eyebrow">ÚLTIMAS PARTIDAS</p><h3>Histórico</h3></div>
+          <div id="profileHistory" class="history-list"><div class="empty-state">Nenhuma partida cadastrada.</div></div>
+        </section>
+        <section>
+          <div class="subheading"><p class="eyebrow">CLASSIFICAÇÃO</p><h3>Ranking geral</h3></div>
+          <div id="profileLeaderboard" class="leaderboard-list compact-ranking"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="rulesModal" class="modal hidden">
+    <div class="modal-card rules-card">
+      <div class="modal-heading"><div><p class="eyebrow">COMO JOGAR</p><h2>Regras</h2></div><button id="closeRulesBtn" class="icon-button" aria-label="Fechar">×</button></div>
+      <div class="rules-grid">
+        <div><b>Objetivo</b><span>Esvazie sua mão. No modo por pontos, mantenha o menor total.</span></div>
+        <div><b>Distribuição</b><span>Quatro jogadores recebem 13 cartas. Todo o baralho é usado.</span></div>
+        <div><b>Ordem das cartas</b><span>3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A e 2.</span></div>
+        <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa e precisa usá-lo.</span></div>
+        <div><b>Jogadas</b><span>Carta, dupla, trinca ou combinação de cinco cartas.</span></div>
+        <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe.</span></div>
+        <div><b>Flush</b><span>Comparam-se somente os números, da maior carta para a menor. O naipe não interfere.</span></div>
+        <div><b>Sequência proibida</b><span>J-Q-K-A-2 não é sequência. A maior sequência permitida é 10-J-Q-K-A.</span></div>
+        <div><b>Batida</b><span>Depois que alguém termina, cada adversário ainda possui uma última jogada.</span></div>
+        <div><b>Blocos de 4</b><span>A cada rodada, soma-se 1 ponto por carta restante. O limite é conferido após quatro rodadas.</span></div>
+        <div><b>Ranking</b><span>Usuários cadastrados recebem 1 ponto por vitória, separado por modalidade.</span></div>
+        <div><b>Tempo</b><span>O anfitrião escolhe 30 ou 60 segundos para cada jogada.</span></div>
+      </div>
     </div>
   </div>
 
   <div id="winnerModal" class="modal hidden">
     <div class="modal-card winner-card">
-      <div class="trophy">🏆</div>
+      <div class="winner-sun">勝</div>
+      <p class="eyebrow">RESULTADO</p>
       <h2 id="winnerTitle">Fim de jogo</h2>
       <p id="winnerText"></p>
       <div id="roundResults" class="round-results"></div>
       <button id="nextRoundBtn" class="btn primary hidden">Próxima rodada</button>
       <p id="rematchStatus" class="rematch-status"></p>
-      <button id="winnerLobbyBtn" class="btn ghost">⌂ Voltar ao início</button>
+      <button id="winnerLobbyBtn" class="btn outline">Voltar ao início</button>
     </div>
   </div>
 

@@ -1,6 +1,7 @@
 "use strict";
 
-const socket = io({ reconnection: true });
+const AUTH_TOKEN_KEY = "pokerChinesAuthToken";
+const socket = io({ reconnection: true, auth: { token: localStorage.getItem(AUTH_TOKEN_KEY) || "" } });
 const SUITS = [
   { symbol: "♦", name: "Ouros", red: true },
   { symbol: "♥", name: "Copas", red: true },
@@ -17,10 +18,240 @@ let toastTimer = null;
 let directory = { onlineCount: 0, availableCount: 0, players: [], openRooms: [] };
 let presenceTimer = null;
 let turnCountdownTimer = null;
+let account = null;
+let leaderboard = [];
+let homeRankMode = "single";
+let profileCache = null;
 let handSortMode = localStorage.getItem("pokerChinesHandSort") === "suit" ? "suit" : "rank";
 
 const $ = id => document.getElementById(id);
 const screens = ["homeScreen", "lobbyScreen", "gameScreen"];
+
+function authToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+}
+
+async function apiFetch(url, options = {}) {
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const token = authToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url, { ...options, headers });
+  let data;
+  try { data = await response.json(); }
+  catch { data = { ok: false, error: "Resposta inválida do servidor." }; }
+  if (!response.ok || !data?.ok) throw new Error(data?.error || "Não foi possível concluir a operação.");
+  return data;
+}
+
+function accountInitial() {
+  return (account?.displayName || "J").charAt(0).toUpperCase();
+}
+
+function syncAccountUi() {
+  const registered = Boolean(account?.id);
+  $("guestAccountBox").classList.toggle("hidden", registered);
+  $("memberAccountBox").classList.toggle("hidden", !registered);
+  if (registered) {
+    $("accountDisplayName").textContent = account.displayName;
+    $("accountAvatar").textContent = accountInitial();
+    ["createName", "joinName"].forEach(id => {
+      $(id).value = account.displayName;
+      $(id).readOnly = true;
+      $(id).title = "O nome do perfil é usado nas partidas cadastradas.";
+    });
+    setSavedName(account.displayName);
+  } else {
+    ["createName", "joinName"].forEach(id => {
+      $(id).readOnly = false;
+      $(id).title = "";
+    });
+  }
+}
+
+function setAccountSession(data) {
+  account = data?.user || null;
+  if (data?.token) localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+  socket.auth = { token: authToken() };
+  socket.emit("authenticate_user", { token: authToken() }, () => {});
+  profileCache = null;
+  syncAccountUi();
+  loadLeaderboard();
+}
+
+function logoutAccount() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  account = null;
+  profileCache = null;
+  socket.auth = { token: "" };
+  socket.emit("authenticate_user", { token: "" }, () => {});
+  syncAccountUi();
+  toast("Você saiu da conta. O jogo continua disponível como visitante.", "success");
+}
+
+function openAuth(mode = "login") {
+  showAuthMode(mode);
+  $("authModal").classList.remove("hidden");
+  setTimeout(() => $(mode === "register" ? "registerDisplayName" : "loginUsername").focus(), 30);
+}
+
+function closeAuth() { $("authModal").classList.add("hidden"); }
+
+function showAuthMode(mode) {
+  const register = mode === "register";
+  $("loginTabBtn").classList.toggle("active", !register);
+  $("registerTabBtn").classList.toggle("active", register);
+  $("loginForm").classList.toggle("hidden", register);
+  $("registerForm").classList.toggle("hidden", !register);
+}
+
+async function loginAccount(event) {
+  event.preventDefault();
+  try {
+    const result = await apiFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username: $("loginUsername").value, password: $("loginPassword").value })
+    });
+    setAccountSession(result);
+    $("loginPassword").value = "";
+    closeAuth();
+    toast(`Bem-vindo, ${result.user.displayName}.`, "success");
+  } catch (error) { toast(error.message, "error"); }
+}
+
+async function registerAccount(event) {
+  event.preventDefault();
+  const password = $("registerPassword").value;
+  if (password !== $("registerPasswordConfirm").value) {
+    toast("As senhas não coincidem.", "warning");
+    return;
+  }
+  try {
+    const result = await apiFetch("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        displayName: $("registerDisplayName").value,
+        username: $("registerUsername").value,
+        password
+      })
+    });
+    setAccountSession(result);
+    $("registerPassword").value = "";
+    $("registerPasswordConfirm").value = "";
+    closeAuth();
+    toast("Conta criada. Suas próximas vitórias serão registradas.", "success");
+  } catch (error) { toast(error.message, "error"); }
+}
+
+function rankingValues(row, mode) {
+  if (mode === "blocks") return { points: row.blockPoints, wins: row.blockWins, games: row.blockGames, label: "blocos" };
+  if (mode === "total") return { points: row.totalPoints, wins: row.totalWins, games: row.totalGames, label: "jogos" };
+  return { points: row.singlePoints, wins: row.singleWins, games: row.singleGames, label: "únicas" };
+}
+
+function sortedLeaderboard(mode) {
+  return [...leaderboard].sort((a, b) => {
+    const av = rankingValues(a, mode);
+    const bv = rankingValues(b, mode);
+    return bv.points - av.points || bv.wins - av.wins || a.displayName.localeCompare(b.displayName, "pt-BR");
+  });
+}
+
+function leaderboardHtml(mode, limit = 12) {
+  const rows = sortedLeaderboard(mode).slice(0, limit);
+  if (!rows.length) return '<div class="empty-state">O ranking começará quando usuários cadastrados vencerem partidas.</div>';
+  return rows.map((row, index) => {
+    const values = rankingValues(row, mode);
+    const mine = account?.id === row.userId;
+    return `<div class="leaderboard-row${mine ? " is-me" : ""}">
+      <span class="leaderboard-position">${String(index + 1).padStart(2, "0")}</span>
+      <span class="leaderboard-player"><b>${escapeHtml(row.displayName)}${mine ? " · você" : ""}</b><small>@${escapeHtml(row.username)} · ${values.wins} vitória(s) em ${values.games} ${values.label}</small></span>
+      <span class="leaderboard-score"><b>${values.points}</b><small>pontos</small></span>
+    </div>`;
+  }).join("");
+}
+
+function renderHomeLeaderboard() {
+  ["homeRankSingleBtn", "homeRankBlocksBtn", "homeRankTotalBtn"].forEach(id => {
+    const button = $(id);
+    button.classList.toggle("active", button.dataset.rankMode === homeRankMode);
+  });
+  $("homeLeaderboard").innerHTML = leaderboardHtml(homeRankMode, 10);
+}
+
+async function loadLeaderboard() {
+  try {
+    const result = await apiFetch("/api/leaderboard", { method: "GET" });
+    leaderboard = result.leaderboard || [];
+    renderHomeLeaderboard();
+    if (!$("profileModal").classList.contains("hidden")) {
+      $("profileLeaderboard").innerHTML = leaderboardHtml("total", 10);
+    }
+  } catch (error) {
+    $("homeLeaderboard").innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function historyHtml(matches) {
+  if (!Array.isArray(matches) || matches.length === 0) return '<div class="empty-state">Nenhuma partida cadastrada.</div>';
+  return matches.map(match => {
+    const date = match.finishedAt ? new Date(match.finishedAt).toLocaleDateString("pt-BR") : "-";
+    const mode = match.mode === "blocks" ? "Blocos de 4" : "Partida única";
+    return `<div class="history-row${match.won ? " won" : ""}">
+      <span class="history-result">${match.won ? "V" : "-"}</span>
+      <span><b>${mode}</b><small>Sala ${escapeHtml(match.roomCode || "-")} · ${date}</small></span>
+      <strong>${match.won ? "+1 pt" : "0 pt"}</strong>
+    </div>`;
+  }).join("");
+}
+
+function renderProfile(profile) {
+  const stats = profile.stats || {};
+  $("profileName").textContent = profile.user.displayName;
+  $("profileUsername").textContent = `@${profile.user.username}`;
+  $("profileSinglePoints").textContent = stats.singlePoints || 0;
+  $("profileSingleWins").textContent = stats.singleWins || 0;
+  $("profileSingleGames").textContent = stats.singleGames || 0;
+  $("profileBlockPoints").textContent = stats.blockPoints || 0;
+  $("profileBlockWins").textContent = stats.blockWins || 0;
+  $("profileBlockGames").textContent = stats.blockGames || 0;
+  $("profileTotalPoints").textContent = stats.totalPoints || 0;
+  $("profileTotalWins").textContent = stats.totalWins || 0;
+  $("profileHistory").innerHTML = historyHtml(profile.matches);
+  $("profileLeaderboard").innerHTML = leaderboardHtml("total", 10);
+}
+
+async function openProfile() {
+  if (!account) { openAuth("login"); return; }
+  $("profileModal").classList.remove("hidden");
+  try {
+    const profile = await apiFetch("/api/auth/me", { method: "GET" });
+    profileCache = profile;
+    account = profile.user;
+    syncAccountUi();
+    renderProfile(profile);
+  } catch (error) {
+    closeProfile();
+    toast(error.message, "error");
+  }
+}
+
+function closeProfile() { $("profileModal").classList.add("hidden"); }
+
+async function loadCurrentAccount() {
+  if (!authToken()) { syncAccountUi(); return; }
+  try {
+    const profile = await apiFetch("/api/auth/me", { method: "GET" });
+    account = profile.user;
+    profileCache = profile;
+    socket.auth = { token: authToken() };
+    socket.emit("authenticate_user", { token: authToken() }, () => {});
+  } catch {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    account = null;
+    socket.auth = { token: "" };
+  }
+  syncAccountUi();
+}
 
 function showScreen(id) {
   screens.forEach(screenId => $(screenId).classList.toggle("hidden", screenId !== id));
@@ -62,7 +293,7 @@ function clearSession() {
 }
 
 function savedName() {
-  return cleanName(localStorage.getItem("pokerChinesName") || getSession()?.name || "");
+  return cleanName(account?.displayName || localStorage.getItem("pokerChinesName") || getSession()?.name || "");
 }
 
 function setSavedName(name) {
@@ -124,7 +355,7 @@ async function copyInvite() {
 }
 
 function createRoom() {
-  const name = syncNameInputs($("createName").value, "createName");
+  const name = account?.displayName || syncNameInputs($("createName").value, "createName");
   if (name.length < 2) {
     toast("Digite seu nome antes de criar a sala.", "warning");
     $("createName").focus();
@@ -146,7 +377,7 @@ function createRoom() {
 }
 
 function playAgainstBots() {
-  const name = syncNameInputs($("createName").value, "createName");
+  const name = account?.displayName || syncNameInputs($("createName").value, "createName");
   if (name.length < 2) {
     toast("Digite seu nome antes de jogar contra os bots.", "warning");
     $("createName").focus();
@@ -175,7 +406,7 @@ function playAgainstBots() {
 }
 
 function joinRoom(codeOverride = null) {
-  const name = syncNameInputs($("joinName").value || $("createName").value, "joinName");
+  const name = account?.displayName || syncNameInputs($("joinName").value || $("createName").value, "joinName");
   const code = cleanCode(codeOverride || $("roomCodeInput").value);
   if (name.length < 2) {
     toast("Digite seu nome antes de entrar.", "warning");
@@ -342,7 +573,7 @@ function renderDirectory() {
         const available = player.status === "available";
         return `<div class="online-item">
           <span class="avatar small">${escapeHtml(player.name.charAt(0).toUpperCase())}</span>
-          <span class="online-main"><b>${escapeHtml(player.name)}${isMe ? " (você)" : ""}</b><small>${escapeHtml(statusText(player))}</small></span>
+          <span class="online-main"><b>${escapeHtml(player.name)}${player.registered ? ' <span class="registered-mark">CAD.</span>' : ""}${isMe ? " (você)" : ""}</b><small>${escapeHtml(statusText(player))}</small></span>
           <span class="status-chip ${available ? "available" : "busy"}">${available ? "Livre" : "Ocupado"}</span>
         </div>`;
       }).join("");
@@ -404,8 +635,8 @@ function analyze(cards) {
   }
   if (triple && pair) return { valid: true, count, type: "Full House", strength: [2, triple.rank] };
   if (isFlush) {
-    const highest = [...sorted].sort((a, b) => b.rank - a.rank || b.suit - a.suit)[0];
-    return { valid: true, count, type: "Flush", strength: [1, sorted[0].suit, highest.rank] };
+    const ranksDescending = [...sorted].sort((a, b) => b.rank - a.rank).map(card => card.rank);
+    return { valid: true, count, type: "Flush", strength: [1, ...ranksDescending] };
   }
   if (isStraight) {
     const high = sorted[sorted.length - 1];
@@ -467,7 +698,8 @@ function playerSeatHtml(player, isMe = false) {
   const bot = player.isBot ? " 🤖" : "";
   const botLevel = player.isBot ? ` • ${botDifficultyText(player.botDifficulty || state.botDifficulty)}` : "";
   const meLabel = isMe ? " (você)" : "";
-  return `<div class="seat-name"><span class="online-dot${player.connected ? "" : " off"}"></span>${escapeHtml(player.name)}${bot}${meLabel}</div>
+  const registered = player.registered ? ' <span class="registered-mark">●</span>' : "";
+  return `<div class="seat-name"><span class="online-dot${player.connected ? "" : " off"}"></span>${escapeHtml(player.name)}${registered}${bot}${meLabel}</div>
     <div class="seat-meta">${player.cardCount} carta${player.cardCount === 1 ? "" : "s"}${botLevel}${state.mode === "points" ? ` • ${player.score}/${state.scoreLimit} pts` : ""}</div>
     ${isMe ? "" : miniDeck(player.cardCount)}`;
 }
@@ -482,7 +714,7 @@ function renderLobby() {
   $("lobbyPlayers").innerHTML = state.players.map(player => `<div class="lobby-player${player.connected ? "" : " offline"}">
       <span class="avatar">${escapeHtml(player.isBot ? "🤖" : player.name.charAt(0).toUpperCase())}</span>
       <span class="name">${escapeHtml(player.name)}</span>
-      <span class="player-tag">${player.id === state.me.id ? "VOCÊ " : ""}${player.isBot ? `BOT ${botDifficultyText(player.botDifficulty || state.botDifficulty).toUpperCase()} ` : ""}${player.isHost ? "ANFITRIÃO" : ""}</span>
+      <span class="player-tag">${player.id === state.me.id ? "VOCÊ " : ""}${player.registered ? "CADASTRADO " : ""}${player.isBot ? `BOT ${botDifficultyText(player.botDifficulty || state.botDifficulty).toUpperCase()} ` : ""}${player.isHost ? "ANFITRIÃO" : ""}</span>
       ${amHost && player.isBot ? `<button class="bot-remove" data-bot-id="${player.id}" aria-label="Remover bot">×</button>` : ""}
     </div>`).join("");
 
@@ -781,6 +1013,8 @@ function openRules() { $("rulesModal").classList.remove("hidden"); }
 function closeRules() { $("rulesModal").classList.add("hidden"); }
 
 socket.on("connect", () => {
+  socket.auth = { token: authToken() };
+  if (authToken()) socket.emit("authenticate_user", { token: authToken() }, () => {});
   $("connectionText").textContent = "Servidor conectado.";
   announcePresence();
   if (getSession()) rejoin();
@@ -789,6 +1023,20 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
   $("connectionText").textContent = "Conexão perdida. Tentando reconectar...";
   toast("Conexão perdida. Tentando reconectar...", "warning");
+});
+
+socket.on("auth_state", payload => {
+  if (payload?.user && !account) {
+    account = payload.user;
+    syncAccountUi();
+  }
+});
+
+socket.on("profile_updated", () => {
+  profileCache = null;
+  loadLeaderboard();
+  if (!$("profileModal").classList.contains("hidden")) openProfile();
+  toast("Seu ranking foi atualizado.", "success");
 });
 
 socket.on("room_state", nextState => {
@@ -843,6 +1091,25 @@ $("gameRulesBtn").addEventListener("click", openRules);
 $("closeRulesBtn").addEventListener("click", closeRules);
 $("rulesModal").addEventListener("click", event => { if (event.target.id === "rulesModal") closeRules(); });
 $("winnerLobbyBtn").addEventListener("click", goHome);
+$("openAuthBtn").addEventListener("click", () => openAuth("login"));
+$("openProfileBtn").addEventListener("click", openProfile);
+$("logoutBtn").addEventListener("click", logoutAccount);
+$("lobbyAccountBtn").addEventListener("click", () => account ? openProfile() : openAuth("login"));
+$("gameAccountBtn").addEventListener("click", () => account ? openProfile() : openAuth("login"));
+$("closeAuthBtn").addEventListener("click", closeAuth);
+$("authModal").addEventListener("click", event => { if (event.target.id === "authModal") closeAuth(); });
+$("loginTabBtn").addEventListener("click", () => showAuthMode("login"));
+$("registerTabBtn").addEventListener("click", () => showAuthMode("register"));
+$("loginForm").addEventListener("submit", loginAccount);
+$("registerForm").addEventListener("submit", registerAccount);
+$("closeProfileBtn").addEventListener("click", closeProfile);
+$("profileModal").addEventListener("click", event => { if (event.target.id === "profileModal") closeProfile(); });
+["homeRankSingleBtn", "homeRankBlocksBtn", "homeRankTotalBtn"].forEach(id => {
+  $(id).addEventListener("click", event => {
+    homeRankMode = event.currentTarget.dataset.rankMode;
+    renderHomeLeaderboard();
+  });
+});
 
 $("roomCodeInput").addEventListener("input", event => { event.target.value = cleanCode(event.target.value); });
 ["createName", "joinName"].forEach(inputId => {
@@ -876,3 +1143,10 @@ if (savedTurnDuration === "30" || savedTurnDuration === "60") {
 }
 renderDirectory();
 syncHandSortButtons();
+syncAccountUi();
+loadCurrentAccount().then(() => {
+  const name = savedName();
+  if (name) syncNameInputs(name);
+  announcePresence(name);
+});
+loadLeaderboard();
