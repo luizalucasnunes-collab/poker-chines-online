@@ -2876,3 +2876,486 @@ select:focus {
     font-size: 28px;
   }
 }
+
+
+
+/* =========================================================
+   v5.2 — home Bauhaus aprovada + timer circular + cartas simples
+   ========================================================= */
+
+.home-screen {
+  background: #0d0d0d;
+}
+
+.brand-header {
+  background: #0d0d0d;
+}
+
+.brand-lockup .bauhaus-mark {
+  display: grid;
+}
+
+.home-showcase {
+  position: relative;
+  display: grid;
+  min-height: 680px;
+  grid-template-columns: minmax(470px, .95fr) minmax(250px, .55fr) minmax(430px, .95fr);
+  align-items: center;
+  gap: 22px;
+  overflow: hidden;
+  padding: 42px 22px 38px;
+  border-bottom: 1px solid rgba(238,224,198,.38);
+  background:
+    radial-gradient(circle at 76% 45%, rgba(212,28,28,.05), transparent 23rem),
+    #0d0d0d;
+}
+
+.home-showcase .hero-copy {
+  padding: 25px 0;
+}
+
+.home-showcase .hero-copy .eyebrow {
+  margin-bottom: 17px;
+  color: var(--red);
+  font-size: 13px;
+  letter-spacing: .15em;
+}
+
+.home-showcase .hero-copy h1 {
+  max-width: 700px;
+  margin-bottom: 22px;
+  color: var(--paper);
+  font-size: clamp(70px, 7vw, 112px);
+  line-height: .86;
+  letter-spacing: -.065em;
+}
+
+.home-showcase .hero-copy h1 span {
+  color: var(--red);
+}
+
+.home-showcase .hero-copy .subtitle {
+  max-width: 620px;
+  color: rgba(238,224,198,.86);
+  font-size: clamp(17px, 1.5vw, 22px);
+  line-height: 1.45;
+}
+
+.home-showcase .hero-features {
+  gap: 7px;
+  margin-top: 23px;
+}
+
+.home-showcase .hero-features span {
+  padding: 8px 10px;
+  border: 1px solid rgba(238,224,198,.32);
+  color: var(--paper);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* demo circular timer on home */
+.home-timer-showcase {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+}
+
+.home-timer-showcase > p {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+  color: var(--paper);
+  font-family: "Montserrat", sans-serif;
+  font-size: 17px;
+  letter-spacing: .05em;
+}
+
+.home-timer-showcase > p::before,
+.home-timer-showcase > p::after {
+  width: 62px;
+  height: 1px;
+  content: "";
+  background: rgba(238,224,198,.45);
+}
+
+.home-round-timer {
+  position: relative;
+  display: grid;
+  width: 250px;
+  height: 250px;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #0d0d0d 0 67%, transparent 68%),
+    conic-gradient(var(--red) 0 47%, rgba(238,224,198,.16) 47% 100%);
+  outline: 1px solid rgba(238,224,198,.42);
+  outline-offset: 11px;
+}
+
+.home-round-timer::after {
+  position: absolute;
+  inset: 20px;
+  content: "";
+  border: 1px solid rgba(238,224,198,.25);
+  border-radius: 50%;
+}
+
+.home-round-timer .timer-caption,
+.home-round-timer .timer-note,
+.home-round-timer strong {
+  position: absolute;
+  z-index: 2;
+}
+
+.home-round-timer .timer-caption {
+  top: 66px;
+  color: var(--paper-dim);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.home-round-timer strong {
+  color: var(--paper);
+  font-family: "Montserrat", sans-serif;
+  font-size: 68px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.home-round-timer strong small {
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.home-round-timer .timer-note {
+  bottom: 60px;
+  color: var(--paper-dim);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+
+/* simple card fan on home */
+.home-card-showcase {
+  position: relative;
+  min-height: 520px;
+}
+
+.home-card-showcase .decor {
+  position: absolute;
+  display: block;
+}
+
+.home-card-showcase .quarter-cream {
+  top: 12px;
+  right: 16px;
+  width: 150px;
+  height: 150px;
+  border-radius: 150px 0 0 0;
+  background: var(--paper);
+  opacity: .10;
+}
+
+.home-card-showcase .red-circle {
+  right: -30px;
+  bottom: 38px;
+  width: 126px;
+  height: 126px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.home-card-showcase .dot-grid {
+  right: 100px;
+  bottom: 70px;
+  width: 115px;
+  height: 82px;
+  background-image: radial-gradient(circle, var(--red) 0 2px, transparent 2.5px);
+  background-size: 17px 17px;
+}
+
+.showcase-card {
+  position: absolute;
+  bottom: 112px;
+  width: 145px;
+  height: 215px;
+  border: 1px solid #b7aa94;
+  border-radius: 12px;
+  color: #111;
+  background: var(--paper);
+  transform-origin: center bottom;
+}
+
+.showcase-card b,
+.showcase-card em {
+  position: absolute;
+  top: 12px;
+  font-family: "Montserrat", sans-serif;
+  font-size: 23px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.showcase-card b { left: 12px; }
+.showcase-card em { left: 46px; }
+
+.showcase-card strong {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 68px;
+  font-weight: 400;
+}
+
+.showcase-card.red {
+  color: var(--red);
+}
+
+.showcase-card.black {
+  color: #111;
+}
+
+.showcase-card.c1 { left: 5%; transform: rotate(-18deg); }
+.showcase-card.c2 { left: 21%; transform: rotate(-9deg); }
+.showcase-card.c3 { left: 38%; transform: rotate(-1deg); }
+.showcase-card.c4 { left: 55%; transform: rotate(8deg); }
+.showcase-card.c5 { left: 70%; transform: rotate(16deg); }
+
+/* actual round timer */
+.turn-panel {
+  align-items: center;
+}
+
+.turn-status {
+  min-width: 265px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.round-turn-timer {
+  --turn-angle: 360deg;
+  position: relative;
+  display: grid;
+  width: 150px;
+  height: 150px;
+  place-items: center;
+  margin: 0 auto 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--red) var(--turn-angle), rgba(238,224,198,.12) 0);
+}
+
+.round-turn-timer::before {
+  position: absolute;
+  inset: 8px;
+  content: "";
+  border: 1px solid rgba(238,224,198,.22);
+  border-radius: 50%;
+  background: #171616;
+}
+
+.round-turn-timer::after {
+  position: absolute;
+  inset: 18px;
+  content: "";
+  border: 1px solid rgba(238,224,198,.12);
+  border-radius: 50%;
+}
+
+.turn-timer-content {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+}
+
+.turn-timer-content small {
+  margin-bottom: 4px;
+  color: var(--paper-dim);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.turn-timer-content #turnTimerText {
+  color: var(--paper);
+  font-family: "Montserrat", sans-serif;
+  font-size: 38px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.round-turn-timer.warning {
+  background: conic-gradient(var(--red-soft) var(--turn-angle), rgba(238,224,198,.12) 0);
+}
+
+.round-turn-timer.critical {
+  background: conic-gradient(#ff3333 var(--turn-angle), rgba(238,224,198,.08) 0);
+  animation: none;
+}
+
+.round-turn-timer.critical::before {
+  background: #1a0d0d;
+}
+
+.turn-progress-proxy {
+  display: none;
+}
+
+/* cards: identical suit language on all ranks, including J/Q/K/A */
+.card {
+  color: #111;
+  background: var(--paper);
+}
+
+.card.red {
+  color: var(--red);
+}
+
+.card-rank {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+  color: currentColor;
+}
+
+.card-rank strong {
+  font-size: 18px;
+  line-height: .95;
+}
+
+.card-rank small {
+  margin-top: 0;
+  color: currentColor;
+  font-size: 12px;
+  line-height: .95;
+}
+
+.card-suit {
+  align-self: center;
+  color: currentColor;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.card-art,
+.card-watermark,
+.face-card .card-art,
+.face-card .card-watermark {
+  display: none !important;
+}
+
+/* reduce overlap further so suit/rank remain visible */
+.hand .card {
+  margin-left: -11px;
+}
+
+.played-cards .card {
+  margin-left: -7px;
+}
+
+@media (max-width: 1200px) {
+  .home-showcase {
+    grid-template-columns: 1fr 300px;
+  }
+
+  .home-card-showcase {
+    grid-column: 1 / -1;
+    min-height: 360px;
+  }
+
+  .showcase-card {
+    bottom: 60px;
+  }
+}
+
+@media (max-width: 850px) {
+  .home-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .home-timer-showcase {
+    padding: 10px 0 24px;
+  }
+
+  .home-card-showcase {
+    min-height: 300px;
+  }
+
+  .showcase-card {
+    width: 100px;
+    height: 150px;
+  }
+
+  .showcase-card strong {
+    font-size: 46px;
+  }
+
+  .home-card-showcase .red-circle {
+    width: 86px;
+    height: 86px;
+  }
+}
+
+@media (max-width: 580px) {
+  .home-showcase {
+    padding: 28px 10px;
+  }
+
+  .home-showcase .hero-copy h1 {
+    font-size: 52px;
+  }
+
+  .home-round-timer {
+    width: 205px;
+    height: 205px;
+  }
+
+  .home-round-timer strong {
+    font-size: 56px;
+  }
+
+  .home-card-showcase {
+    min-height: 250px;
+  }
+
+  .showcase-card {
+    width: 78px;
+    height: 118px;
+    bottom: 52px;
+  }
+
+  .showcase-card b,
+  .showcase-card em {
+    top: 7px;
+    font-size: 15px;
+  }
+
+  .showcase-card b { left: 7px; }
+  .showcase-card em { left: 27px; }
+
+  .showcase-card strong {
+    font-size: 36px;
+  }
+
+  .round-turn-timer {
+    width: 126px;
+    height: 126px;
+  }
+
+  .turn-timer-content #turnTimerText {
+    font-size: 32px;
+  }
+
+  .hand .card {
+    margin-left: -15px;
+  }
+}

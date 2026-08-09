@@ -661,17 +661,10 @@ function cardHtml(card) {
   const suit = SUITS[card.suit];
   const rank = RANKS[card.rank];
   const red = suit.red ? " red" : "";
-  const faceClass = rank === "J" || rank === "Q" || rank === "K" || rank === "A"
-    ? ` face-card face-${rank.toLowerCase()}`
-    : "";
 
-  const center = faceClass
-    ? `<span class="card-watermark" aria-hidden="true">${suit.symbol}</span><span class="card-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`
-    : `<span class="card-suit">${suit.symbol}</span>`;
-
-  return `<button class="card${red}${faceClass}" data-card-id="${card.id}" aria-label="${rank} de ${suit.name}">
+  return `<button class="card${red}" data-card-id="${card.id}" aria-label="${rank} de ${suit.name}">
     <span class="card-rank"><strong>${rank}</strong><small>${suit.symbol}</small></span>
-    ${center}
+    <span class="card-suit">${suit.symbol}</span>
     <span class="card-rank card-bottom"><strong>${rank}</strong><small>${suit.symbol}</small></span>
   </button>`;
 }
@@ -798,6 +791,7 @@ function updateTurnCountdown() {
     timer.classList.remove("warning", "critical");
     text.textContent = state?.paused ? "Pausado" : "--";
     bar.style.width = "0%";
+    timer.style.setProperty("--turn-angle", "0deg");
     return;
   }
 
@@ -809,6 +803,7 @@ function updateTurnCountdown() {
 
   text.textContent = `${remainingSeconds}s`;
   bar.style.width = `${percentage}%`;
+  timer.style.setProperty("--turn-angle", `${percentage * 3.6}deg`);
   timer.classList.toggle("warning", remainingSeconds <= 10 && remainingSeconds > 5);
   timer.classList.toggle("critical", remainingSeconds <= 5);
 }

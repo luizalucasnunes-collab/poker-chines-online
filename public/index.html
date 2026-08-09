@@ -19,11 +19,8 @@
     <section id="homeScreen" class="screen home-screen">
       <header class="brand-header">
         <a class="brand-lockup" href="/" aria-label="Pôquer Chinês">
-          <span class="brand-emblem" aria-hidden="true">
-            <i class="suit red diamond">♦</i>
-            <i class="suit red heart">♥</i>
-            <i class="suit black spade">♠</i>
-            <i class="suit black club">♣</i>
+          <span class="bauhaus-mark" aria-hidden="true">
+            <i class="bh-quarter"></i><i class="bh-bars"></i><i class="bh-fan"></i><i class="bh-dot"></i>
           </span>
           <span class="brand-name"><b>PÔQUER</b><b>CHINÊS</b><small>MULTIPLAYER ONLINE</small></span>
         </a>
@@ -41,11 +38,11 @@
         </div>
       </header>
 
-      <section class="editorial-hero">
+      <section class="editorial-hero home-showcase">
         <div class="hero-copy">
-          <p class="eyebrow">ESTRATÉGIA · LEITURA · PLANEJAMENTO</p>
-          <h1>POUCAS REGRAS.<br><span>MUITAS DECISÕES.</span></h1>
-          <p class="subtitle">Quatro jogadores, treze cartas e uma disputa para esvaziar a mão antes dos adversários.</p>
+          <p class="eyebrow">A ORDEM É A SUA ARMA.</p>
+          <h1>POUCAS<br>REGRAS.<br><span>MUITAS<br>DECISÕES.</span></h1>
+          <p class="subtitle">Pôquer Chinês Online é estratégia pura. Organize, planeje, supere. Sempre.</p>
           <div class="hero-features" aria-label="Recursos principais">
             <span>4 jogadores</span>
             <span>30s ou 60s</span>
@@ -53,17 +50,34 @@
             <span>Ranking por modalidade</span>
           </div>
         </div>
-        <div class="hero-art" aria-hidden="true">
-          <div class="hero-glyph-cloud">
-            <span class="glyph g1"></span><span class="glyph g2"></span><span class="glyph g3"></span>
-            <span class="glyph g4"></span><span class="glyph g5"></span><span class="glyph g6"></span>
-            <span class="glyph g7"></span><span class="glyph g8"></span><span class="glyph g9"></span>
+
+        <div class="home-timer-showcase" aria-hidden="true">
+          <p>SUA VEZ</p>
+          <div class="home-round-timer">
+            <span class="timer-caption">TEMPO RESTANTE</span>
+            <strong>30<small>s</small></strong>
+            <span class="timer-note">ORGANIZE SUA MÃO</span>
           </div>
-          <div class="hero-suit-row">
-            <span class="suit-tile red">♦</span>
-            <span class="suit-tile red">♥</span>
-            <span class="suit-tile black">♠</span>
-            <span class="suit-tile black">♣</span>
+        </div>
+
+        <div class="home-card-showcase" aria-hidden="true">
+          <span class="decor quarter-cream"></span>
+          <span class="decor red-circle"></span>
+          <span class="decor dot-grid"></span>
+          <div class="showcase-card c1 black">
+            <b>10</b><em>♣</em><strong>♣</strong>
+          </div>
+          <div class="showcase-card c2 black">
+            <b>J</b><em>♣</em><strong>♣</strong>
+          </div>
+          <div class="showcase-card c3 red">
+            <b>Q</b><em>♥</em><strong>♥</strong>
+          </div>
+          <div class="showcase-card c4 black">
+            <b>K</b><em>♠</em><strong>♠</strong>
+          </div>
+          <div class="showcase-card c5 red">
+            <b>A</b><em>♦</em><strong>♦</strong>
           </div>
         </div>
       </section>
@@ -167,7 +181,7 @@
 
     <section id="lobbyScreen" class="screen hidden lobby-screen">
       <header class="inner-header">
-        <div class="mini-brand"><span class="brand-emblem compact" aria-hidden="true"><i class="suit red diamond">♦</i><i class="suit red heart">♥</i><i class="suit black spade">♠</i><i class="suit black club">♣</i></span><span><small>PÔQUER</small><b>CHINÊS</b></span></div>
+        <div class="mini-brand"><span class="bauhaus-mark compact" aria-hidden="true"><i class="bh-quarter"></i><i class="bh-bars"></i><i class="bh-fan"></i><i class="bh-dot"></i></span><span><small>PÔQUER</small><b>CHINÊS</b></span></div>
         <div><p class="eyebrow">SALA DE ESPERA</p><h1>A mesa está quase pronta.</h1></div>
         <div class="top-actions">
           <button id="lobbyAccountBtn" class="btn outline">Conta</button>
@@ -241,9 +255,12 @@
         <div class="table-center">
           <div class="turn-panel">
             <div id="turnStatus" class="turn-status">Aguardando...</div>
-            <div id="turnTimer" class="turn-timer">
-              <span id="turnTimerText">30s</span>
-              <div class="turn-progress" aria-hidden="true"><span id="turnProgressBar"></span></div>
+            <div id="turnTimer" class="turn-timer round-turn-timer" style="--turn-angle: 360deg;">
+              <div class="turn-timer-content">
+                <small>TEMPO RESTANTE</small>
+                <span id="turnTimerText">30s</span>
+              </div>
+              <span id="turnProgressBar" class="turn-progress-proxy" aria-hidden="true"></span>
             </div>
           </div>
           <div id="playSurface" class="played-area" role="button" tabindex="0" aria-label="Jogar cartas selecionadas">

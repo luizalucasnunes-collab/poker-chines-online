@@ -1,0 +1,24 @@
+PÔQUER CHINÊS ONLINE v5.2
+
+ALTERAÇÕES
+- home baseada no layout Bauhaus preto aprovado;
+- logo Bauhaus reaplicado;
+- cronômetro visual circular na home;
+- cronômetro real da partida convertido para círculo com progresso;
+- todas as cartas usam a mesma linguagem de naipes;
+- J, Q, K e A não possuem desenhos especiais;
+- cartas exibem apenas letra/número + símbolo do naipe;
+- ♦ e ♥ vermelhos;
+- ♠ e ♣ pretos nas cartas claras;
+- regras, bots, cadastro, ranking e banco preservados.
+
+REGRAS PRESERVADAS
+- Flush comparado por valores, nunca por naipe;
+- 2-3-4-5-6 é sequência válida e a mais forte;
+- 10-J-Q-K-A é a maior sequência normal;
+- J-Q-K-A-2 é proibida;
+- modo por pontos em blocos de 4, com limite de 31;
+- fase final após a batida preservada.
+
+HEALTH
+/health -> 5.2.0
