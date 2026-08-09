@@ -3359,3 +3359,133 @@ select:focus {
     margin-left: -15px;
   }
 }
+
+
+
+/* =========================================================
+   v5.3 — correção do cronômetro circular
+   ========================================================= */
+
+.round-turn-timer.turn-timer {
+  --turn-angle: 360deg;
+  position: relative;
+  display: grid !important;
+  width: 164px;
+  height: 164px;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: 0 !important;
+  margin: 0 auto 12px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50%;
+  background:
+    conic-gradient(var(--red) var(--turn-angle), rgba(238,224,198,.10) 0);
+}
+
+.round-turn-timer.turn-timer::before {
+  position: absolute;
+  inset: 9px;
+  z-index: 0;
+  content: "";
+  border: 1px solid rgba(238,224,198,.26);
+  border-radius: 50%;
+  background: #171616;
+}
+
+.round-turn-timer.turn-timer::after {
+  position: absolute;
+  inset: 20px;
+  z-index: 0;
+  content: "";
+  border: 1px solid rgba(238,224,198,.12);
+  border-radius: 50%;
+}
+
+.round-turn-timer .turn-timer-content {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  width: 100%;
+  height: 100%;
+  padding: 0 22px;
+  text-align: center !important;
+  transform: none !important;
+}
+
+.round-turn-timer .turn-timer-content small {
+  display: block;
+  width: 100%;
+  margin: 0 !important;
+  color: var(--paper-dim);
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: .09em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.round-turn-timer .turn-timer-content #turnTimerText {
+  display: block;
+  width: 100%;
+  margin: 0;
+  color: var(--paper);
+  font-family: "Montserrat", "Inter", sans-serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -.04em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.round-turn-timer.turn-timer > span {
+  position: static;
+}
+
+.round-turn-timer.warning {
+  background:
+    conic-gradient(var(--red-soft) var(--turn-angle), rgba(238,224,198,.10) 0);
+}
+
+.round-turn-timer.critical {
+  background:
+    conic-gradient(#ff3535 var(--turn-angle), rgba(238,224,198,.08) 0);
+}
+
+.round-turn-timer.critical::before {
+  background: #190d0d;
+}
+
+.round-turn-timer.critical .turn-timer-content #turnTimerText,
+.round-turn-timer.critical .turn-timer-content small {
+  color: var(--paper);
+}
+
+@media (max-width: 580px) {
+  .round-turn-timer.turn-timer {
+    width: 136px;
+    height: 136px;
+  }
+
+  .round-turn-timer .turn-timer-content {
+    padding: 0 18px;
+    gap: 4px !important;
+  }
+
+  .round-turn-timer .turn-timer-content small {
+    font-size: 7px;
+  }
+
+  .round-turn-timer .turn-timer-content #turnTimerText {
+    font-size: 36px;
+  }
+}

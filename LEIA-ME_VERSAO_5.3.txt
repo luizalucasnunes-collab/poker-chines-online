@@ -1,0 +1,12 @@
+PÔQUER CHINÊS ONLINE v5.3
+
+CORREÇÃO
+- Cronômetro circular corrigido.
+- "TEMPO RESTANTE" centralizado.
+- Segundos centralizados no meio do círculo.
+- Removida a interferência da grade antiga de duas colunas.
+- Anel de progresso mantido.
+- Todas as regras, usuários, ranking e bots permanecem iguais à v5.2.
+
+HEALTH
+/health -> 5.3.0
