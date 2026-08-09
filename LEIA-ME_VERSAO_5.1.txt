@@ -1,0 +1,14 @@
+PÔQUER CHINÊS ONLINE v5.1
+
+AJUSTES PRINCIPAIS
+- homepage aproximada da arte preta aprovada;
+- logo circular com os quatro naipes;
+- hero com a composição "POUCAS REGRAS. MUITAS DECISÕES.";
+- ícones de naipes grandes à direita;
+- naipes das cartas mais legíveis;
+- menor sobreposição na mão, para não esconder rank e naipe;
+- marca d'água de naipe nas cartas da família real;
+- sem perda de regras, ranking, bots ou integração com PostgreSQL.
+
+HEALTH
+/health -> 5.1.0

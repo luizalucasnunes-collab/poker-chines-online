@@ -2446,3 +2446,433 @@ select:focus {
     grid-column: 1 / -1;
   }
 }
+
+
+
+/* =========================================================
+   v5.1 — home preta da arte aprovada + naipes mais claros
+   ========================================================= */
+
+/* Home */
+.home-screen {
+  background:
+    radial-gradient(circle at 16% 18%, rgba(212,28,28,.08), transparent 26rem),
+    radial-gradient(circle at 82% 70%, rgba(255,255,255,.02), transparent 24rem),
+    linear-gradient(180deg, #1c1b1b 0%, #161515 100%);
+}
+
+.brand-header {
+  min-height: 96px;
+  padding: 18px 18px 16px;
+  border-bottom: 1px solid rgba(238,224,198,.55);
+}
+
+.brand-lockup {
+  gap: 16px;
+}
+
+.brand-emblem {
+  position: relative;
+  display: grid;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  place-items: center;
+  border: 2px solid rgba(238,224,198,.95);
+  border-radius: 50%;
+  color: var(--paper);
+  background: transparent;
+}
+
+.brand-emblem.compact {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+  border-width: 1px;
+}
+
+.brand-emblem .suit {
+  position: absolute;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.brand-emblem .suit.red { color: var(--red); }
+.brand-emblem .suit.black { color: var(--paper); }
+
+.brand-emblem .diamond { top: 15px; left: 19px; font-size: 18px; }
+.brand-emblem .heart   { top: 15px; right: 18px; font-size: 18px; }
+.brand-emblem .spade   { bottom: 14px; left: 19px; font-size: 18px; }
+.brand-emblem .club    { bottom: 14px; right: 18px; font-size: 18px; }
+
+.brand-emblem.compact .diamond,
+.brand-emblem.compact .heart,
+.brand-emblem.compact .spade,
+.brand-emblem.compact .club {
+  font-size: 11px;
+}
+.brand-emblem.compact .diamond { top: 10px; left: 11px; }
+.brand-emblem.compact .heart   { top: 10px; right: 11px; }
+.brand-emblem.compact .spade   { bottom: 9px; left: 11px; }
+.brand-emblem.compact .club    { bottom: 9px; right: 11px; }
+
+.brand-name b {
+  font-size: 39px;
+  line-height: .77;
+  color: var(--paper);
+}
+.brand-name b:last-of-type {
+  color: var(--red);
+}
+.brand-name small {
+  margin-top: 12px;
+  color: rgba(238,224,198,.92);
+  font-size: 10px;
+  letter-spacing: .28em;
+}
+
+.account-avatar {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  background: var(--red);
+}
+.account-copy small {
+  color: rgba(238,224,198,.72);
+  letter-spacing: .16em;
+}
+.account-copy b {
+  font-size: 17px;
+}
+
+.account-nav .btn.ink {
+  min-height: 54px;
+  padding: 0 22px;
+  border-color: rgba(238,224,198,.55);
+  background: rgba(0,0,0,.18);
+}
+.account-nav .btn.text-btn {
+  color: var(--paper);
+  text-decoration-color: var(--red);
+}
+
+.editorial-hero {
+  min-height: 725px;
+  grid-template-columns: minmax(560px, 1fr) minmax(430px, .88fr);
+  gap: 20px;
+  padding: 44px 22px 28px;
+  border-bottom: 1px solid rgba(238,224,198,.55);
+}
+
+.hero-copy {
+  padding: 38px 0 24px;
+}
+.hero-copy .eyebrow {
+  margin-bottom: 18px;
+  font-size: 14px;
+  letter-spacing: .22em;
+}
+.hero-copy h1 {
+  max-width: 760px;
+  font-size: clamp(82px, 8.2vw, 136px);
+  line-height: .9;
+  letter-spacing: -.065em;
+}
+.hero-copy .subtitle {
+  max-width: 650px;
+  margin-top: 16px;
+  color: rgba(238,224,198,.92);
+  font-size: clamp(21px, 1.9vw, 31px);
+  line-height: 1.35;
+}
+
+.hero-features {
+  gap: 12px;
+  margin-top: 24px;
+}
+.hero-features span {
+  padding: 12px 16px;
+  border: 1px solid rgba(238,224,198,.55);
+  color: var(--paper);
+  background: rgba(0,0,0,.12);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: none;
+}
+
+.hero-art {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+}
+
+.hero-glyph-cloud {
+  position: absolute;
+  inset: 18px 6px 0 0;
+}
+.hero-glyph-cloud .glyph {
+  position: absolute;
+  width: 54px;
+  height: 70px;
+  opacity: .085;
+}
+.hero-glyph-cloud .glyph::before,
+.hero-glyph-cloud .glyph::after {
+  position: absolute;
+  content: "";
+  inset: 0;
+  border: 6px solid rgba(238,224,198,.28);
+}
+.hero-glyph-cloud .glyph::after {
+  inset: 10px 14px 10px 0;
+  border-left-width: 0;
+  border-right-width: 6px;
+  border-top-width: 6px;
+  border-bottom-width: 6px;
+}
+.hero-glyph-cloud .g1 { top: 64px; right: 210px; transform: scale(.95); }
+.hero-glyph-cloud .g2 { top: 126px; right: 140px; transform: scale(1.08); }
+.hero-glyph-cloud .g3 { top: 44px; right: 54px; transform: scale(1.12); }
+.hero-glyph-cloud .g4 { top: 198px; right: 88px; transform: scale(1.02); }
+.hero-glyph-cloud .g5 { top: 278px; right: 156px; transform: scale(1.18); }
+.hero-glyph-cloud .g6 { top: 366px; right: 76px; transform: scale(1.08); }
+.hero-glyph-cloud .g7 { top: 364px; right: 228px; transform: scale(.98); }
+.hero-glyph-cloud .g8 { top: 454px; right: 8px; transform: scale(.95); }
+.hero-glyph-cloud .g9 { top: 468px; right: 178px; transform: scale(1.05); }
+
+.hero-suit-row {
+  position: absolute;
+  right: 18px;
+  bottom: 24px;
+  display: flex;
+  gap: 16px;
+}
+.suit-tile {
+  display: grid;
+  width: 84px;
+  height: 84px;
+  place-items: center;
+  border: 2px solid rgba(238,224,198,.76);
+  color: var(--paper);
+  background: rgba(238,224,198,.12);
+  font-size: 40px;
+  line-height: 1;
+}
+.suit-tile.red { color: var(--red); }
+.suit-tile.black { color: var(--paper); }
+
+.home-layout {
+  gap: 24px;
+  padding: 34px 18px 0;
+}
+.discovery-section {
+  padding: 36px 18px 0;
+}
+.site-footer {
+  margin: 30px 18px 0;
+  padding-bottom: 12px;
+  border-top: 1px solid rgba(238,224,198,.55);
+  color: rgba(238,224,198,.88);
+}
+
+/* make cards clearer */
+.card {
+  border-color: #c4b69f;
+}
+
+.card-rank {
+  gap: 3px;
+  align-items: flex-start;
+}
+.card-rank strong {
+  display: block;
+  font-size: 18px;
+  line-height: .94;
+}
+.card-rank small {
+  display: block;
+  margin-top: 0;
+  font-size: 13px;
+  line-height: .9;
+}
+.card-suit {
+  font-size: 28px;
+}
+
+.card-watermark {
+  position: absolute;
+  inset: 25px 0 0;
+  display: grid;
+  place-items: center;
+  color: currentColor;
+  font-size: 40px;
+  line-height: 1;
+  opacity: .16;
+}
+
+.face-card .card-art {
+  z-index: 2;
+}
+.face-card .card-rank {
+  z-index: 3;
+}
+.face-card .card-watermark {
+  z-index: 1;
+}
+.face-card .card-art i {
+  box-shadow: none !important;
+}
+
+/* clearer distinction between face cards */
+.face-j .card-art i:nth-child(1) { transform: rotate(-52deg) scaleX(.72); }
+.face-j .card-art i:nth-child(2) { transform: rotate(-34deg) scaleX(.82); }
+.face-j .card-art i:nth-child(3) { transform: rotate(-16deg) scaleX(.92); }
+.face-j .card-art i:nth-child(4) { transform: rotate(2deg) scaleX(.84); }
+.face-j .card-art i:nth-child(5) { transform: rotate(18deg) scaleX(.68); }
+
+.face-q .card-art i:nth-child(1) {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.face-q .card-art i:nth-child(2) {
+  width: 30px;
+  height: 64px;
+}
+.face-q .card-art i:nth-child(3) {
+  width: 36px;
+  height: 16px;
+  transform: rotate(-32deg);
+}
+
+.face-k .card-art i:nth-child(1) { width: 14px; height: 38px; }
+.face-k .card-art i:nth-child(2) { width: 14px; height: 52px; left: 15px; }
+.face-k .card-art i:nth-child(3) { width: 14px; height: 68px; left: 29px; }
+
+.face-a .card-art i {
+  width: 86%;
+  height: 16%;
+}
+.face-a .card-art i:nth-child(1) { transform: rotate(-58deg) scaleX(.78); }
+.face-a .card-art i:nth-child(2) { transform: rotate(-40deg) scaleX(.86); }
+.face-a .card-art i:nth-child(3) { transform: rotate(-22deg) scaleX(.92); }
+.face-a .card-art i:nth-child(4) { transform: rotate(-4deg) scaleX(.98); }
+.face-a .card-art i:nth-child(5) { transform: rotate(14deg) scaleX(.92); }
+
+/* less overlap in hand to reveal ranks and suits */
+.hand .card {
+  margin-left: -15px;
+}
+.hand .card:first-child {
+  margin-left: 0;
+}
+.played-cards .card {
+  margin-left: -8px;
+}
+
+/* responsive */
+@media (max-width: 1100px) {
+  .editorial-hero {
+    min-height: auto;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(70px, 13vw, 112px);
+  }
+
+  .hero-art {
+    min-height: 320px;
+  }
+
+  .hero-suit-row {
+    position: static;
+    margin-top: 220px;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 850px) {
+  .brand-header {
+    padding: 16px 10px 14px;
+  }
+
+  .brand-name b {
+    font-size: 30px;
+  }
+
+  .editorial-hero {
+    padding: 30px 10px 24px;
+  }
+
+  .hero-copy h1 {
+    font-size: 58px;
+  }
+
+  .hero-copy .subtitle {
+    font-size: 19px;
+  }
+
+  .hero-features span {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+
+  .suit-tile {
+    width: 66px;
+    height: 66px;
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 580px) {
+  .brand-emblem {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+  }
+
+  .brand-emblem .diamond,
+  .brand-emblem .heart,
+  .brand-emblem .spade,
+  .brand-emblem .club {
+    font-size: 14px;
+  }
+  .brand-emblem .diamond { top: 11px; left: 13px; }
+  .brand-emblem .heart   { top: 11px; right: 13px; }
+  .brand-emblem .spade   { bottom: 11px; left: 13px; }
+  .brand-emblem .club    { bottom: 11px; right: 13px; }
+
+  .hero-copy h1 {
+    font-size: 46px;
+  }
+
+  .hero-suit-row {
+    gap: 10px;
+    margin-top: 190px;
+  }
+
+  .suit-tile {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    border-width: 1px;
+  }
+
+  .hand .card {
+    margin-left: -18px;
+  }
+
+  .card-rank strong {
+    font-size: 15px;
+  }
+  .card-rank small {
+    font-size: 10px;
+  }
+  .card-watermark {
+    font-size: 28px;
+  }
+}

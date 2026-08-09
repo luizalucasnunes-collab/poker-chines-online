@@ -666,13 +666,13 @@ function cardHtml(card) {
     : "";
 
   const center = faceClass
-    ? `<span class="card-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`
+    ? `<span class="card-watermark" aria-hidden="true">${suit.symbol}</span><span class="card-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`
     : `<span class="card-suit">${suit.symbol}</span>`;
 
   return `<button class="card${red}${faceClass}" data-card-id="${card.id}" aria-label="${rank} de ${suit.name}">
-    <span class="card-rank">${rank}<small>${suit.symbol}</small></span>
+    <span class="card-rank"><strong>${rank}</strong><small>${suit.symbol}</small></span>
     ${center}
-    <span class="card-rank card-bottom">${rank}<small>${suit.symbol}</small></span>
+    <span class="card-rank card-bottom"><strong>${rank}</strong><small>${suit.symbol}</small></span>
   </button>`;
 }
 
