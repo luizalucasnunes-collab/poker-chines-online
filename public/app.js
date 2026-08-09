@@ -615,8 +615,16 @@ function analyze(cards) {
   const uniqueRanks = [...new Set(sorted.map(card => card.rank))];
   const isForbiddenJqka2 = uniqueRanks.length === 5 &&
     uniqueRanks.every((rank, index) => rank === 8 + index);
-  const isStraight = !isForbiddenJqka2 && uniqueRanks.length === 5 &&
+
+  // Regra especial: 2-3-4-5-6 é uma sequência válida.
+  // Como o 2 é a carta mais alta do jogo, esta é a sequência mais forte.
+  const isSpecial23456 = uniqueRanks.length === 5 &&
+    [0, 1, 2, 3, 12].every(rank => uniqueRanks.includes(rank));
+
+  const isNormalStraight = uniqueRanks.length === 5 &&
     uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
+
+  const isStraight = !isForbiddenJqka2 && (isNormalStraight || isSpecial23456);
   const isFlush = sorted.every(card => card.suit === sorted[0].suit);
   const counts = new Map();
   sorted.forEach(card => counts.set(card.rank, (counts.get(card.rank) || 0) + 1));
@@ -626,7 +634,9 @@ function analyze(cards) {
   const pair = entries.find(entry => entry.amount === 2);
 
   if (isStraight && isFlush) {
-    const high = sorted[sorted.length - 1];
+    const high = isSpecial23456
+      ? sorted.find(card => card.rank === 12)
+      : sorted[sorted.length - 1];
     return { valid: true, count, type: "Sequência do mesmo naipe", strength: [4, high.rank, high.suit] };
   }
   if (four) {
@@ -639,18 +649,30 @@ function analyze(cards) {
     return { valid: true, count, type: "Flush", strength: [1, ...ranksDescending] };
   }
   if (isStraight) {
-    const high = sorted[sorted.length - 1];
+    const high = isSpecial23456
+      ? sorted.find(card => card.rank === 12)
+      : sorted[sorted.length - 1];
     return { valid: true, count, type: "Sequência", strength: [0, high.rank, high.suit] };
   }
   return { valid: false };
 }
 
 function cardHtml(card) {
-  const red = SUITS[card.suit].red ? " red" : "";
-  return `<button class="card${red}" data-card-id="${card.id}" aria-label="${RANKS[card.rank]} de ${SUITS[card.suit].name}">
-    <span class="card-rank">${RANKS[card.rank]} ${SUITS[card.suit].symbol}</span>
-    <span class="card-suit">${SUITS[card.suit].symbol}</span>
-    <span class="card-rank card-bottom">${RANKS[card.rank]} ${SUITS[card.suit].symbol}</span>
+  const suit = SUITS[card.suit];
+  const rank = RANKS[card.rank];
+  const red = suit.red ? " red" : "";
+  const faceClass = rank === "J" || rank === "Q" || rank === "K" || rank === "A"
+    ? ` face-card face-${rank.toLowerCase()}`
+    : "";
+
+  const center = faceClass
+    ? `<span class="card-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`
+    : `<span class="card-suit">${suit.symbol}</span>`;
+
+  return `<button class="card${red}${faceClass}" data-card-id="${card.id}" aria-label="${rank} de ${suit.name}">
+    <span class="card-rank">${rank}<small>${suit.symbol}</small></span>
+    ${center}
+    <span class="card-rank card-bottom">${rank}<small>${suit.symbol}</small></span>
   </button>`;
 }
 
@@ -756,7 +778,7 @@ function renderScoreboard() {
   }
   board.classList.remove("hidden");
   const sorted = [...state.players].sort((a, b) => a.score - b.score || a.name.localeCompare(b.name, "pt-BR"));
-  board.innerHTML = sorted.map((player, index) => `<div class="score-item"><span>${index + 1}º ${escapeHtml(player.name)}${player.isBot ? " 🤖" : ""}</span><b>${player.score}/${state.scoreLimit} pts</b></div>`).join("");
+  board.innerHTML = sorted.map((player, index) => `<div class="score-item ${player.id === state.me.id ? "me" : ""}"><div><span>${index + 1}º ${escapeHtml(player.name)}${player.isBot ? " · bot" : ""}</span><small>Total acumulado</small></div><b>${player.score}/${state.scoreLimit} pts</b></div>`).join("");
 }
 
 function stopTurnCountdown() {
@@ -947,7 +969,11 @@ function renderRoundResults() {
     container.innerHTML = "";
     return;
   }
-  container.innerHTML = state.roundResults.map(result => `<div class="result-row">
+  const sortedResults = [...state.roundResults].sort((a, b) => {
+    if (state.mode === "points") return a.score - b.score || a.remainingCards - b.remainingCards || a.name.localeCompare(b.name, "pt-BR");
+    return a.remainingCards - b.remainingCards || a.name.localeCompare(b.name, "pt-BR");
+  });
+  container.innerHTML = sortedResults.map(result => `<div class="result-row">
     <span>${escapeHtml(result.name)}</span>
     <small>${result.remainingCards} carta(s) restantes</small>
     <b class="${result.delta > 0 ? "negative" : "positive"}">${state.mode === "points" ? `+${result.delta} pts • total ${result.score}` : result.remainingCards === 0 ? "Sem cartas" : `${result.remainingCards} carta(s)`}</b>
@@ -990,6 +1016,7 @@ function renderWinner() {
   if (alreadyReady) $("nextRoundBtn").textContent = "Aguardando os demais...";
   $("rematchStatus").textContent = `${state.rematchVoteCount || 0}/${state.rematchRequired || 1} jogador(es) prontos`;
   $("winnerModal").classList.remove("hidden");
+  $("gameScreen").classList.add("modal-open");
 }
 
 function renderState() {
@@ -1001,11 +1028,12 @@ function renderState() {
   if (state.status === "lobby") {
     selectedIds.clear();
     $("winnerModal").classList.add("hidden");
+    $("gameScreen").classList.remove("modal-open");
     renderLobby();
   } else {
     renderGame();
     if (["round_finished", "block_finished", "finished"].includes(state.status)) renderWinner();
-    else $("winnerModal").classList.add("hidden");
+    else { $("winnerModal").classList.add("hidden"); $("gameScreen").classList.remove("modal-open"); }
   }
 }
 

@@ -1,0 +1,8 @@
+PÔQUER CHINÊS ONLINE v4.6
+
+NOVA REGRA
+----------
+- 2-3-4-5-6 agora é uma sequência válida.
+- Como o 2 é a maior carta do jogo, 2-3-4-5-6 é a sequência mais forte.
+- J-Q-K-A-2 continua proibida.
+- A regra funciona no servidor, navegador, dicas e bots, pois todos usam o mesmo analisador de combinações.

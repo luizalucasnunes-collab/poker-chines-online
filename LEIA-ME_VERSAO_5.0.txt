@@ -1,0 +1,23 @@
+PÔQUER CHINÊS ONLINE v5.0
+=========================
+
+Esta versão consolida a identidade visual Bauhaus aprovada, as funções online,
+o cadastro/ranking e todas as regras definidas durante o projeto.
+
+ATUALIZAÇÃO NO SITE EXISTENTE
+-----------------------------
+1. Extraia este ZIP.
+2. Envie todo o conteúdo para o mesmo repositório GitHub.
+3. Não crie outro Web Service no Render.
+4. Mantenha as mesmas variáveis DATABASE_URL e SESSION_SECRET.
+5. Commit sugerido:
+   Aplicar identidade Bauhaus e consolidar regras v5
+6. Aguarde o deploy do Render.
+7. Abra o site e pressione Ctrl + F5.
+
+HEALTH CHECK
+------------
+/health
+
+Versão esperada:
+5.0.0

@@ -1,40 +1,72 @@
-# Pôquer Chinês Online v4.3
+# Pôquer Chinês Online — v5.0
 
-## Alterações visuais
+## Identidade visual aprovada
 
-- **Montserrat** aplicada aos títulos, números de seção e destaques.
-- **Inter** aplicada aos textos, formulários, botões e interface.
-- Escala tipográfica ampliada e reorganizada para desktop e celular.
-- Verso das cartas substituído pelo **símbolo vermelho central da primeira página do PDF enviado**.
-- O símbolo foi extraído com fundo transparente e aplicado sobre carta marfim, com borda vermelha.
-- Naipes vermelhos continuam vermelhos; espadas e paus continuam pretos.
+Direção Bauhaus / modernista com três cores principais:
+
+- Vermelho: `#D41C1C`
+- Preto carvão: `#292727`
+- Creme quente: `#EEE0C6`
+
+Tipografia:
+- Montserrat: títulos e destaques
+- Inter: textos, controles e dados
+
+Princípios:
+- fundo escuro contínuo;
+- geometria modular;
+- ausência de sombras;
+- contornos finos;
+- vermelho usado como ação/destaque;
+- cartas J/Q/K/A com figuras geométricas abstratas, sem personagens da família real;
+- ♠ e ♣ permanecem pretos nas cartas claras;
+- ♦ e ♥ permanecem vermelhos.
+
+## Regras consolidadas
+
+- 4 jogadores, 13 cartas por jogador.
+- Ordem: 3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2.
+- O portador do 3♦ inicia e a primeira jogada deve conter o 3♦.
+- Jogadas: carta, dupla, trinca ou combinação de cinco cartas.
+- Cinco cartas: Sequência < Flush < Full House < Quadra + carta < Sequência do mesmo naipe.
+- Flush é comparado somente pelos valores das cartas, da maior para a menor. Naipe não desempata Flush.
+- 2-3-4-5-6 é uma sequência válida e é a sequência mais forte.
+- 10-J-Q-K-A é a maior sequência normal.
+- J-Q-K-A-2 é proibida como sequência.
+- Depois da batida, os outros três jogadores possuem exatamente uma última oportunidade em ordem para jogar ou passar.
+- No modo por pontos, cada carta restante vale 1 ponto.
+- A conferência é feita em blocos de 4 rodadas.
+- Se ninguém atingir 31 pontos ao fim do bloco, outro bloco de 4 começa mantendo o acumulado.
+- Ao atingir o limite, maior total perde e menor total vence.
+- Cronômetro configurável em 30 ou 60 segundos.
+- Bots Médio, Difícil e Especialista.
+- Revanche depende da confirmação dos jogadores humanos.
+
+## Usuários e ranking
+
+- Cadastro e login persistentes em PostgreSQL/Neon.
+- Ranking separado entre Partidas Únicas e Blocos de 4.
+- Cada vitória cadastrada vale 1 ponto na modalidade correspondente.
+- Bots não entram no ranking de usuários.
 
 ## Hospedagem
 
-Mantém a arquitetura gratuita:
+Preparado para:
+- Render Free Web Service
+- Neon PostgreSQL
+- GitHub
 
-- Render Free para o servidor online;
-- Neon PostgreSQL para usuários e rankings;
-- GitHub para o código.
+Variáveis:
+- `DATABASE_URL`
+- `SESSION_SECRET`
+- `ONLINE_ONLY=true`
+- `NODE_ENV=production`
 
-## Atualização
+Build:
+`npm ci --omit=dev`
 
-Envie todos os arquivos deste pacote para o mesmo repositório já conectado ao Render. O endereço online permanece o mesmo.
+Start:
+`node server.js`
 
-Build Command: `npm ci --omit=dev`
-
-Start Command: `node server.js`
-
-Health Check: `/health`
-
-
-## Alterações da versão 4.4
-
-- Removidos os números `00`, `01`, `02` e `03` da página inicial.
-- Mesa de jogo alterada para preto.
-- Removidos os efeitos de sombra e deslocamento de botões.
-- Removida a sombra ao selecionar cartas; a carta continua subindo.
-- Removido o efeito de sombra do centro clicável da mesa.
-- Mantidos Montserrat nos títulos e Inter na interface.
-- Mantido o hexagrama no verso das cartas.
-- Mantidos cadastro, login, perfis, histórico e rankings.
+Health:
+`/health`

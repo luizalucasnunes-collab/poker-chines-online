@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#d91f26">
+  <meta name="theme-color" content="#292727">
   <meta name="description" content="Pôquer Chinês multiplayer com usuários, ranking e bots inteligentes.">
   <title>Pôquer Chinês Online</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,9 @@
     <section id="homeScreen" class="screen home-screen">
       <header class="brand-header">
         <a class="brand-lockup" href="/" aria-label="Pôquer Chinês">
-          <span class="brand-sun" aria-hidden="true"><span class="suit-emblem"><i>♦</i><i>♥</i><i>♠</i><i>♣</i></span></span>
+          <span class="bauhaus-mark" aria-hidden="true">
+            <i class="bh-quarter"></i><i class="bh-bars"></i><i class="bh-fan"></i><i class="bh-dot"></i>
+          </span>
           <span class="brand-name"><b>PÔQUER</b><b>CHINÊS</b><small>MULTIPLAYER ONLINE</small></span>
         </a>
         <div class="account-nav">
@@ -49,9 +51,21 @@
           </div>
         </div>
         <div class="hero-art" aria-hidden="true">
-          <div class="rising-sun"></div>
-          <div class="brush-mountain"></div>
-          <div class="card-glyphs"><i>♦</i><i>♥</i><i>♠</i><i>♣</i></div>
+          <div class="bauhaus-composition">
+            <span class="shape quarter cream"></span>
+            <span class="shape circle red"></span>
+            <span class="shape square outline"></span>
+            <span class="shape dots"></span>
+          </div>
+          <div class="hero-card-fan">
+            <span class="hero-back-card back-one"></span>
+            <span class="hero-back-card back-two"></span>
+            <span class="hero-back-card back-three"></span>
+            <span class="hero-face-card">
+              <b>A</b><em>♥</em>
+              <span class="hero-face-art"><i></i><i></i><i></i><i></i></span>
+            </span>
+          </div>
         </div>
       </section>
 
@@ -148,13 +162,13 @@
 
       <footer class="site-footer">
         <span id="connectionText">Conectando ao servidor...</span>
-        <span>公平 · ESTRATÉGIA · EVOLUÇÃO</span>
+        <span>FORMA · FUNÇÃO · ESTRATÉGIA</span>
       </footer>
     </section>
 
     <section id="lobbyScreen" class="screen hidden lobby-screen">
       <header class="inner-header">
-        <div class="mini-brand"><span class="mini-sun" aria-hidden="true"><span class="mini-suits"><i>♦</i><i>♥</i><i>♠</i><i>♣</i></span></span><span><small>PÔQUER</small><b>CHINÊS</b></span></div>
+        <div class="mini-brand"><span class="bauhaus-mark compact" aria-hidden="true"><i class="bh-quarter"></i><i class="bh-bars"></i><i class="bh-fan"></i><i class="bh-dot"></i></span><span><small>PÔQUER</small><b>CHINÊS</b></span></div>
         <div><p class="eyebrow">SALA DE ESPERA</p><h1>A mesa está quase pronta.</h1></div>
         <div class="top-actions">
           <button id="lobbyAccountBtn" class="btn outline">Conta</button>
@@ -165,12 +179,10 @@
 
       <div class="lobby-layout">
         <article class="room-code-card">
-          <span class="big-index">04</span>
-          <p>CÓDIGO DA SALA</p>
+                    <p>CÓDIGO DA SALA</p>
           <strong id="roomCodeDisplay">-----</strong>
           <div id="roomModeText" class="mode-badge">Partida única</div>
           <button id="copyRoomBtn" class="btn primary">Copiar convite</button>
-          <div class="room-orbit" aria-hidden="true"></div>
         </article>
 
         <article class="panel paper-panel lobby-player-panel">
@@ -208,7 +220,6 @@
     <section id="gameScreen" class="screen game-screen hidden">
       <header class="game-header">
         <div class="game-brand-block">
-          <span class="game-index">05</span>
           <div><span class="room-badge">SALA <b id="gameRoomCode">-----</b></span><h1>Pôquer Chinês</h1><div id="roundText" class="round-text"></div></div>
         </div>
         <div class="game-actions">
@@ -263,11 +274,11 @@
     <div class="modal-card auth-card">
       <button id="closeAuthBtn" class="icon-button close-corner" aria-label="Fechar">×</button>
       <div class="auth-visual">
-        <span class="auth-index">会</span>
+        <span class="auth-bauhaus" aria-hidden="true"><i></i><i></i><i></i></span>
         <p class="eyebrow">CONTA DE JOGADOR</p>
         <h2>Suas vitórias passam a ter história.</h2>
         <p>Cadastre-se para acumular pontos, acompanhar cada modalidade e aparecer no ranking.</p>
-        <div class="auth-sun"></div>
+        <div class="auth-shape" aria-hidden="true"></div>
       </div>
       <div class="auth-content">
         <div class="auth-tabs">
@@ -310,9 +321,9 @@
         <button id="closeProfileBtn" class="icon-button" aria-label="Fechar">×</button>
       </div>
       <div class="profile-stats">
-        <article class="stat-card single-stat"><span>01</span><small>PARTIDAS ÚNICAS</small><strong id="profileSinglePoints">0</strong><em>pontos</em><p><b id="profileSingleWins">0</b> vitórias em <b id="profileSingleGames">0</b> jogos</p></article>
-        <article class="stat-card block-stat"><span>04</span><small>BLOCOS DE QUATRO</small><strong id="profileBlockPoints">0</strong><em>pontos</em><p><b id="profileBlockWins">0</b> vitórias em <b id="profileBlockGames">0</b> séries</p></article>
-        <article class="stat-card total-stat"><span>全</span><small>TOTAL ACUMULADO</small><strong id="profileTotalPoints">0</strong><em>pontos</em><p><b id="profileTotalWins">0</b> vitórias cadastradas</p></article>
+        <article class="stat-card single-stat"><span>◆</span><small>PARTIDAS ÚNICAS</small><strong id="profileSinglePoints">0</strong><em>pontos</em><p><b id="profileSingleWins">0</b> vitórias em <b id="profileSingleGames">0</b> jogos</p></article>
+        <article class="stat-card block-stat"><span>■</span><small>BLOCOS DE QUATRO</small><strong id="profileBlockPoints">0</strong><em>pontos</em><p><b id="profileBlockWins">0</b> vitórias em <b id="profileBlockGames">0</b> séries</p></article>
+        <article class="stat-card total-stat"><span>●</span><small>TOTAL ACUMULADO</small><strong id="profileTotalPoints">0</strong><em>pontos</em><p><b id="profileTotalWins">0</b> vitórias cadastradas</p></article>
       </div>
       <div class="profile-grid">
         <section>
@@ -337,8 +348,8 @@
         <div><b>Primeira jogada</b><span>Quem tiver o 3♦ começa e precisa usá-lo.</span></div>
         <div><b>Jogadas</b><span>Carta, dupla, trinca ou combinação de cinco cartas.</span></div>
         <div><b>Cinco cartas</b><span>Sequência &lt; Flush &lt; Full House &lt; Quadra + carta &lt; Sequência do mesmo naipe.</span></div>
-        <div><b>Flush</b><span>Comparam-se somente os números, da maior carta para a menor. O naipe não interfere.</span></div>
-        <div><b>Sequência proibida</b><span>J-Q-K-A-2 não é sequência. A maior sequência permitida é 10-J-Q-K-A.</span></div>
+        <div><b>Flush</b><span>O Flush é decidido somente pelos valores das cartas, da maior para a menor. O naipe nunca desempata um Flush.</span></div>
+        <div><b>Sequências especiais</b><span>2-3-4-5-6 é válida e é a sequência mais forte. 10-J-Q-K-A é a maior sequência normal. J-Q-K-A-2 permanece proibida.</span></div>
         <div><b>Batida</b><span>Depois que alguém termina, cada adversário ainda possui uma última jogada.</span></div>
         <div><b>Blocos de 4</b><span>A cada rodada, soma-se 1 ponto por carta restante. O limite é conferido após quatro rodadas.</span></div>
         <div><b>Ranking</b><span>Usuários cadastrados recebem 1 ponto por vitória, separado por modalidade.</span></div>
@@ -347,9 +358,9 @@
     </div>
   </div>
 
-  <div id="winnerModal" class="modal hidden">
+  <div id="winnerModal" class="modal winner-modal hidden">
     <div class="modal-card winner-card">
-      <div class="winner-sun">勝</div>
+      <div class="winner-sun" aria-hidden="true"><i></i><i></i><i></i></div>
       <p class="eyebrow">RESULTADO</p>
       <h2 id="winnerTitle">Fim de jogo</h2>
       <p id="winnerText"></p>

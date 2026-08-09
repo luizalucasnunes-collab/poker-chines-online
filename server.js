@@ -104,7 +104,7 @@ app.get("/api/leaderboard", async (_req, res) => {
 
 app.get("/health", (_req, res) => res.json({
   ok: true,
-  version: "4.4.0",
+  version: "5.0.0",
   hosting: process.env.RENDER === "true" ? "render-free" : "local",
   storage: storage.status()
 }));
@@ -330,8 +330,16 @@ function analyze(cards) {
   const uniqueRanks = [...new Set(sorted.map(card => card.rank))];
   const isForbiddenJqka2 = uniqueRanks.length === 5 &&
     uniqueRanks.every((rank, index) => rank === 8 + index);
-  const isStraight = !isForbiddenJqka2 && uniqueRanks.length === 5 &&
+
+  // Regra especial: 2-3-4-5-6 é uma sequência válida.
+  // Como o 2 é a carta mais alta do jogo, esta é a sequência mais forte.
+  const isSpecial23456 = uniqueRanks.length === 5 &&
+    [0, 1, 2, 3, 12].every(rank => uniqueRanks.includes(rank));
+
+  const isNormalStraight = uniqueRanks.length === 5 &&
     uniqueRanks.every((rank, index) => index === 0 || rank === uniqueRanks[index - 1] + 1);
+
+  const isStraight = !isForbiddenJqka2 && (isNormalStraight || isSpecial23456);
   const isFlush = sorted.every(card => card.suit === sorted[0].suit);
 
   const rankCounts = new Map();
@@ -342,7 +350,9 @@ function analyze(cards) {
   const pair = entries.find(entry => entry.amount === 2);
 
   if (isStraight && isFlush) {
-    const high = sorted[sorted.length - 1];
+    const high = isSpecial23456
+      ? sorted.find(card => card.rank === 12)
+      : sorted[sorted.length - 1];
     return { valid: true, count, type: "Sequência do mesmo naipe", category: 4, strength: [4, high.rank, high.suit] };
   }
 
@@ -369,7 +379,9 @@ function analyze(cards) {
   }
 
   if (isStraight) {
-    const high = sorted[sorted.length - 1];
+    const high = isSpecial23456
+      ? sorted.find(card => card.rank === 12)
+      : sorted[sorted.length - 1];
     return { valid: true, count, type: "Sequência", category: 0, strength: [0, high.rank, high.suit] };
   }
 
@@ -2100,7 +2112,7 @@ async function startServer() {
   await storage.init();
   server.listen(PORT, "0.0.0.0", () => {
     const status = storage.status();
-    console.log(`Pôquer Chinês Online v4.4 rodando na porta ${PORT}`);
+    console.log(`Pôquer Chinês Online v5.0 rodando na porta ${PORT}`);
     console.log(`Armazenamento de usuários: ${status.backend}${status.persistent ? " (persistente)" : " (local; configure DATABASE_URL para persistência no Render)"}`);
   });
 }

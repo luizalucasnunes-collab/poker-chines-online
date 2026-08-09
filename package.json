@@ -1,8 +1,8 @@
 {
   "name": "poker-chines-online",
-  "version": "4.4.0",
+  "version": "5.0.0",
   "private": true,
-  "description": "Pôquer Chinês Online com mesa preta, home sem numeração editorial, Montserrat + Inter, cadastro e rankings persistentes.",
+  "description": "Pôquer Chinês Online v5 — identidade Bauhaus, usuários persistentes, ranking por modalidade, bots estratégicos e regras consolidadas.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
