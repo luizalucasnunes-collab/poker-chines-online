@@ -1,0 +1,12 @@
+PÔQUER CHINÊS ONLINE v5.4
+
+ALTERAÇÃO
+- Placar do modo por pontos fixado na lateral direita da mesa no desktop.
+- O placar continua ordenado pelo menor total.
+- O jogador atual recebe destaque discreto.
+- Em tablets o placar vai para cima da mesa.
+- Em celulares fica em lista vertical antes da mesa.
+- Cronômetro circular, regras, bots, cadastro, ranking e banco permanecem inalterados.
+
+HEALTH
+/health -> 5.4.0

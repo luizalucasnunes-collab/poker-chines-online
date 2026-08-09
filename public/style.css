@@ -3489,3 +3489,135 @@ select:focus {
     font-size: 36px;
   }
 }
+
+
+
+/* =========================================================
+   v5.4 — placar fixo na lateral direita
+   ========================================================= */
+
+.game-screen {
+  position: relative;
+  width: min(1680px, 100%);
+  padding-right: 360px;
+}
+
+.scoreboard {
+  position: fixed !important;
+  top: 145px !important;
+  right: max(18px, calc((100vw - min(1680px, 100%)) / 2 + 18px)) !important;
+  bottom: auto !important;
+  left: auto !important;
+  z-index: 35;
+  display: flex;
+  width: 320px;
+  max-height: calc(100vh - 180px);
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 13px;
+  border: 1px solid rgba(238,224,198,.38);
+  background: rgba(23,22,22,.98);
+}
+
+.scoreboard::before {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--red-soft);
+  content: "PLACAR";
+  font-family: "Montserrat", "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.score-item {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(238,224,198,.22);
+  color: var(--paper);
+  background: rgba(41,39,39,.92);
+}
+
+.score-item:first-of-type {
+  border-color: var(--red);
+}
+
+.score-item span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.score-item small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.score-item b {
+  color: var(--red-soft);
+  font-family: "Montserrat", "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.score-item.me {
+  border-color: var(--paper);
+  background: rgba(238,224,198,.06);
+}
+
+/* Ensure the table never goes under the scoreboard. */
+.game-table {
+  width: 100%;
+}
+
+/* Tablets: move scoreboard above table instead of squeezing it. */
+@media (max-width: 1280px) {
+  .game-screen {
+    padding-right: 28px;
+  }
+
+  .scoreboard {
+    position: static !important;
+    width: 100%;
+    max-height: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 0 0 14px;
+  }
+
+  .scoreboard::before {
+    width: 100%;
+  }
+
+  .score-item {
+    min-width: 220px;
+    flex: 1 1 220px;
+  }
+}
+
+/* Mobile: vertical scoreboard before the table. */
+@media (max-width: 720px) {
+  .scoreboard {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .score-item {
+    min-width: 0;
+    width: 100%;
+  }
+}
