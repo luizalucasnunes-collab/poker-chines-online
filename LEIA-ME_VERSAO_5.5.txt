@@ -1,0 +1,13 @@
+PÔQUER CHINÊS ONLINE v5.5
+
+CORREÇÃO MOBILE
+- A mão agora calcula automaticamente tamanho e sobreposição das cartas.
+- Todas as 13 cartas cabem na largura do celular sem rolagem horizontal.
+- Número/letra e naipe permanecem visíveis mesmo em telas estreitas.
+- Suporte otimizado para larguras de 320, 360, 390 e 430 px.
+- Cartas selecionadas sobem menos no celular para não sair da área útil.
+- Mesa ganhou mais largura útil em smartphones.
+- Placar, cronômetro, regras, bots, cadastro e banco permanecem inalterados.
+
+HEALTH
+/health -> 5.5.0

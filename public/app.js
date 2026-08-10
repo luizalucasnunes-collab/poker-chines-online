@@ -816,6 +816,75 @@ function startTurnCountdown() {
   }
 }
 
+
+function fitHandToViewport() {
+  const hand = $("hand");
+  if (!hand) return;
+
+  const cards = [...hand.querySelectorAll(".card")];
+
+  // Limpa estilos inline ao voltar para desktop/tablet.
+  const clearInline = () => {
+    hand.style.removeProperty("--mobile-card-width");
+    hand.style.removeProperty("--mobile-card-height");
+    hand.style.removeProperty("--mobile-card-step");
+    cards.forEach(card => {
+      card.style.removeProperty("width");
+      card.style.removeProperty("height");
+      card.style.removeProperty("flex-basis");
+      card.style.removeProperty("margin-left");
+    });
+  };
+
+  if (window.innerWidth > 720 || cards.length === 0) {
+    clearInline();
+    return;
+  }
+
+  const count = cards.length;
+  const available = Math.max(
+    250,
+    Math.floor(hand.getBoundingClientRect().width || (window.innerWidth - 20))
+  );
+
+  // Cartas menores em aparelhos estreitos, mas ainda legíveis.
+  let cardWidth;
+  if (window.innerWidth <= 340) cardWidth = 40;
+  else if (window.innerWidth <= 380) cardWidth = 42;
+  else if (window.innerWidth <= 430) cardWidth = 45;
+  else cardWidth = 48;
+
+  const cardHeight = Math.round(cardWidth * 1.50);
+
+  // Espaço real que cada carta pode ocupar para que toda a mão caiba.
+  const step = count > 1
+    ? Math.min(cardWidth, Math.max(17, (available - cardWidth) / (count - 1)))
+    : cardWidth;
+
+  const overlap = step - cardWidth;
+
+  hand.style.setProperty("--mobile-card-width", `${cardWidth}px`);
+  hand.style.setProperty("--mobile-card-height", `${cardHeight}px`);
+  hand.style.setProperty("--mobile-card-step", `${step}px`);
+
+  cards.forEach((card, index) => {
+    card.style.width = `${cardWidth}px`;
+    card.style.height = `${cardHeight}px`;
+    card.style.flexBasis = `${cardWidth}px`;
+    card.style.marginLeft = index === 0 ? "0px" : `${overlap}px`;
+  });
+}
+
+let handResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(handResizeTimer);
+  handResizeTimer = setTimeout(() => {
+    if (state && !$("gameScreen").classList.contains("hidden")) {
+      fitHandToViewport();
+    }
+  }, 70);
+});
+
 function renderGame() {
   showScreen("gameScreen");
   $("gameRoomCode").textContent = state.code;
@@ -867,6 +936,8 @@ function renderGame() {
       renderGame();
     });
   });
+
+  fitHandToViewport();
 
   const selectedCards = state.me.hand.filter(card => selectedIds.has(card.id));
   const combo = analyze(selectedCards);

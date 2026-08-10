@@ -3621,3 +3621,204 @@ select:focus {
     width: 100%;
   }
 }
+
+
+
+/* =========================================================
+   v5.5 — mão responsiva para celular
+   ========================================================= */
+
+@media (max-width: 720px) {
+  .game-screen {
+    width: 100%;
+    padding: 10px 6px 88px !important;
+  }
+
+  .game-header {
+    margin-bottom: 10px;
+  }
+
+  .game-table {
+    width: 100%;
+    min-height: 650px;
+    overflow: hidden;
+  }
+
+  .hand-area {
+    right: 3px;
+    bottom: 4px;
+    left: 3px;
+    min-height: 132px;
+    padding: 16px 1px 5px;
+    overflow: visible;
+  }
+
+  .hand {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+    padding: 28px 2px 0;
+    overflow: visible;
+  }
+
+  /* As dimensões finais são calculadas pelo JS conforme largura e nº de cartas. */
+  .hand .card {
+    min-width: 0;
+    max-width: none;
+    margin-left: 0;
+    transition: transform .12s, outline-color .12s;
+  }
+
+  /* O canto fica vertical para número + naipe caberem mesmo com forte sobreposição. */
+  .hand .card-rank {
+    display: flex;
+    width: 16px;
+    align-items: center;
+    flex-direction: column;
+    gap: 0;
+    line-height: .9;
+  }
+
+  .hand .card-rank strong {
+    font-size: 13px;
+    line-height: .9;
+  }
+
+  .hand .card-rank small {
+    margin-top: 2px;
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .hand .card-suit {
+    font-size: 18px;
+  }
+
+  .hand .card-bottom {
+    width: 16px;
+  }
+
+  .hand .card:hover {
+    transform: none;
+  }
+
+  .hand .card.selected,
+  .hand .card.hinted {
+    transform: translateY(-19px);
+  }
+
+  .selection-text {
+    top: 2px;
+    max-width: 92%;
+    padding: 4px 8px;
+    overflow: hidden;
+    font-size: 8px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  /* Dá mais espaço horizontal à mesa. */
+  .game-table::before {
+    inset: 5px;
+  }
+
+  .seat.west,
+  .seat.east {
+    min-width: 104px;
+    max-width: 115px;
+    padding: 6px;
+  }
+
+  .seat.west { left: 5px; }
+  .seat.east { right: 5px; }
+
+  .seat.north {
+    top: 12px;
+  }
+
+  .seat.south {
+    bottom: 140px;
+  }
+
+  .seat-name {
+    font-size: 10px;
+  }
+
+  .seat-meta {
+    font-size: 8px;
+  }
+
+  .mini-deck {
+    height: 27px;
+  }
+
+  .card-back {
+    width: 20px;
+    height: 28px;
+    margin-left: -9px;
+  }
+
+  .table-center {
+    width: calc(100% - 22px);
+  }
+
+  .played-area {
+    min-height: 145px;
+    padding: 9px 4px;
+  }
+
+  .played-cards .card {
+    width: 43px;
+    height: 64px;
+    flex-basis: 43px;
+    margin-left: -8px;
+  }
+
+  .played-cards .card-rank strong {
+    font-size: 13px;
+  }
+
+  .played-cards .card-rank small {
+    font-size: 8px;
+  }
+
+  .played-cards .card-suit {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .game-screen {
+    padding-right: 3px !important;
+    padding-left: 3px !important;
+  }
+
+  .game-table {
+    min-height: 620px;
+  }
+
+  .hand-area {
+    right: 1px;
+    left: 1px;
+  }
+
+  .hand {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .seat.west,
+  .seat.east {
+    min-width: 94px;
+    max-width: 102px;
+  }
+
+  .round-turn-timer.turn-timer {
+    width: 116px;
+    height: 116px;
+  }
+
+  .round-turn-timer .turn-timer-content #turnTimerText {
+    font-size: 30px;
+  }
+}

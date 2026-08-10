@@ -1,6 +1,6 @@
 {
   "name": "poker-chines-online",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "private": true,
   "description": "Pôquer Chinês Online v5 — identidade Bauhaus, usuários persistentes, ranking por modalidade, bots estratégicos e regras consolidadas.",
   "main": "server.js",
